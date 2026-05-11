@@ -1,662 +1,563 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0a0e1a">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="BTC Signal">
-<title>BTC Signal — Polymarket 5Min</title>
-<link rel="manifest" id="mf">
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@700;900&family=Barlow:wght@400;600&display=swap');
-:root{
-  --bg:#070b14;--panel:#0f1623;--border:#1a2840;
-  --up:#00e5a0;--dn:#ff4060;--wt:#f5a623;--bl:#3d9bff;
-  --tx:#e2eaf5;--mu:#4a6080;
-  --mono:'Share Tech Mono',monospace;
-  --cond:'Barlow Condensed',sans-serif;
-  --sans:'Barlow',sans-serif;
-}
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--sans);overflow-x:hidden;overscroll-behavior:none}
-body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px);pointer-events:none;z-index:999}
-body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(61,155,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(61,155,255,0.03) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
-
-.app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;padding-bottom:32px;max-width:460px;margin:0 auto}
-
-/* HEADER */
-.hdr{padding:13px 15px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(7,11,20,0.94);position:sticky;top:0;z-index:10;backdrop-filter:blur(14px)}
-.hlogo{width:32px;height:32px;background:linear-gradient(135deg,#00e5a0,#3d9bff);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--cond);font-weight:900;font-size:17px;color:#070b14;margin-right:9px}
-.htitle{font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:1px;line-height:1}
-.hsub{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px}
-.hlft{display:flex;align-items:center}
-.hrgt{display:flex;align-items:center;gap:8px}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--mu);flex-shrink:0}
-.dot.live{background:var(--up);animation:blink 2s infinite}
-.dot.err{background:var(--dn)}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.htime{font-family:var(--mono);font-size:10px;color:var(--mu)}
-
-/* CARDS */
-.card{margin:9px 13px 0;background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:13px 15px;position:relative;overflow:hidden}
-.card-top::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--bl),var(--up))}
-
-/* BTC PRICE */
-.plb{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:2px}
-.pval{font-family:var(--cond);font-size:38px;font-weight:900;letter-spacing:-1px;line-height:1;color:#fff}
-.pval s{font-size:18px;color:var(--mu);text-decoration:none}
-.pmeta{display:flex;gap:12px;margin-top:9px;flex-wrap:wrap}
-.pm .pml{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}
-.pm .pmv{font-family:var(--mono);font-size:12px;color:var(--tx)}
-.pmv.up{color:var(--up)}.pmv.dn{color:var(--dn)}.pmv.wt{color:var(--wt)}
-
-/* PRICE TO BEAT — kunci resolusi */
-.ptb-box{margin:9px 13px 0;background:rgba(61,155,255,0.07);border:1px solid rgba(61,155,255,0.25);border-radius:13px;padding:12px 15px;display:flex;align-items:center;justify-content:space-between}
-.ptb-left .ptb-label{font-family:var(--mono);font-size:9px;color:var(--bl);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px}
-.ptb-left .ptb-val{font-family:var(--cond);font-size:28px;font-weight:900;color:#fff}
-.ptb-right{text-align:right}
-.ptb-right .ptb-diff-label{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px;margin-bottom:3px}
-.ptb-right .ptb-diff{font-family:var(--mono);font-size:16px;font-weight:700}
-.ptb-diff.up{color:var(--up)}.ptb-diff.dn{color:var(--dn)}.ptb-diff.eq{color:var(--wt)}
-
-/* TIMER */
-.trow{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.tval{font-family:var(--mono);font-size:26px;font-weight:700;color:#fff;letter-spacing:2px}
-.tval.urg{color:var(--dn)}.tval.wrn{color:var(--wt)}.tval.ok{color:var(--up)}
-.trk{height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden}
-.tfil{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--bl),var(--up));transition:width .8s linear}
-.twin-info{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px;margin-top:5px}
-
-/* SIGNAL */
-.sig{margin:9px 13px 0;border-radius:13px;padding:16px 15px;border:2px solid var(--border);background:var(--panel);transition:border-color .3s,background .3s}
-.sig.sup{border-color:var(--up);background:rgba(0,229,160,0.05)}
-.sig.sdn{border-color:var(--dn);background:rgba(255,64,96,0.05)}
-.sig.swt{border-color:var(--wt);background:rgba(245,166,35,0.04)}
-.bdg{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:999px;font-family:var(--cond);font-weight:900;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
-.bdg.up{background:rgba(0,229,160,0.13);color:var(--up);border:1px solid rgba(0,229,160,0.3)}
-.bdg.dn{background:rgba(255,64,96,0.13);color:var(--dn);border:1px solid rgba(255,64,96,0.3)}
-.bdg.wt{background:rgba(245,166,35,0.13);color:var(--wt);border:1px solid rgba(245,166,35,0.3)}
-.sigdir{font-family:var(--cond);font-weight:900;font-size:44px;letter-spacing:-2px;line-height:1;margin-bottom:4px}
-.sigdir.up{color:var(--up)}.sigdir.dn{color:var(--dn)}.sigdir.wt{color:var(--wt)}
-.sigsub{font-size:12px;color:var(--mu);margin-bottom:12px;line-height:1.5}
-.crow{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
-.clb{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px;text-transform:uppercase}
-.cpct{font-family:var(--mono);font-size:13px;font-weight:700}
-.ctrk{height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden}
-.cfil{height:100%;border-radius:3px;transition:width .5s}
-.cfil.up{background:var(--up)}.cfil.dn{background:var(--dn)}.cfil.wt{background:var(--wt)}
-
-/* MARKET PRICES */
-.pgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pbox{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:9px;padding:11px;text-align:center}
-.pbox.upb{border-color:rgba(0,229,160,0.22)}.pbox.dnb{border-color:rgba(255,64,96,0.22)}
-.pblb{font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;margin-bottom:4px}
-.pblb.up{color:var(--up)}.pblb.dn{color:var(--dn)}
-.pbv{font-family:var(--mono);font-size:19px;font-weight:700;color:#fff}
-.pbp{font-family:var(--mono);font-size:10px;color:var(--mu);margin-top:2px}
-.payout{margin-top:9px;background:rgba(0,229,160,0.05);border:1px solid rgba(0,229,160,0.15);border-radius:8px;padding:9px 12px;font-family:var(--mono);font-size:11px;color:var(--tx);text-align:center;line-height:1.5}
-.payout b{color:var(--up)}
-
-/* INDICATORS */
-.igrd{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.iitm{background:rgba(255,255,255,0.025);border-radius:8px;padding:9px}
-.inm{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
-.ivl{font-family:var(--mono);font-size:15px;font-weight:700}
-.ivl.bull{color:var(--up)}.ivl.bear{color:var(--dn)}.ivl.neut{color:var(--wt)}
-.idsc{font-size:10px;color:var(--mu);margin-top:1px}
-
-/* SECTION TITLE */
-.stitle{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:9px}
-
-/* LINK */
-.lnk{margin:9px 13px 0;background:rgba(61,155,255,0.05);border:1px solid rgba(61,155,255,0.18);border-radius:13px;padding:12px 15px;display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:var(--bl);transition:background .2s}
-.lnk:active{background:rgba(61,155,255,0.12)}
-.ltxt{font-family:var(--mono);font-size:11px}
-.ltxt small{display:block;font-size:9px;color:var(--mu);letter-spacing:1px;margin-bottom:1px}
-
-/* BTN */
-.rbtn{margin:11px 13px 0;width:calc(100% - 26px);padding:13px;background:linear-gradient(135deg,rgba(0,229,160,0.13),rgba(61,155,255,0.13));border:1px solid rgba(0,229,160,0.28);border-radius:13px;color:var(--up);font-family:var(--cond);font-weight:700;font-size:14px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px}
-.rbtn:active{transform:scale(.98)}.rbtn:disabled{opacity:.4;cursor:not-allowed}
-.upd{text-align:center;font-family:var(--mono);font-size:9px;color:var(--mu);margin-top:9px;letter-spacing:1px}
-
-/* LOADING */
-.ldv{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:72vh;gap:16px}
-.spin{width:40px;height:40px;border:3px solid rgba(0,229,160,0.18);border-top-color:var(--up);border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.ltx{font-family:var(--mono);font-size:10px;color:var(--mu);letter-spacing:2px;animation:blink 1.2s infinite}
-
-/* ERROR */
-.errb{margin:14px;background:rgba(255,64,96,0.07);border:1px solid rgba(255,64,96,0.28);border-radius:13px;padding:16px;text-align:center}
-.erri{font-size:24px;margin-bottom:7px}
-.errm{font-size:12px;color:#ff8099;margin-bottom:13px;line-height:1.6}
-
-.fade-in{animation:fi .35s ease}
-@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="BTC Signal">
+    <title>BTC 5m Sinyal Trading</title>
+    <link rel="manifest" href="data:application/json;base64,${MANIFEST_JSON_BASE64}">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --green: #10b981;
+            --red: #ef4444;
+            --text: #e2e8f0;
+            --text2: #94a3b8;
+            --border: #334155;
+            --gold: #f59e0b;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 16px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--card-bg);
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+        }
+        .logo {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #f7931a, #ff6b35);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .price-block {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px;
+        }
+        .price {
+            font-size: 2rem;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .change {
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 8px;
+        }
+        .up { background: rgba(16,185,129,0.2); color: var(--green); }
+        .down { background: rgba(239,68,68,0.2); color: var(--red); }
+        .signal-box {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            border: 2px solid var(--border);
+        }
+        .signal-title { font-size: 0.85rem; color: var(--text2); margin-bottom: 8px; }
+        .signal-value {
+            font-size: 2.8rem;
+            font-weight: 900;
+            letter-spacing: -0.02em;
+        }
+        .conf-bar {
+            height: 10px;
+            border-radius: 5px;
+            background: #334155;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+        .conf-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.3s;
+        }
+        .mini-chart {
+            width: 100%;
+            height: 200px;
+            background: var(--card-bg);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            display: block;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+        }
+        .ind-card {
+            background: var(--card-bg);
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .ind-name { font-size: 0.7rem; color: var(--text2); text-transform: uppercase; }
+        .ind-val { font-size: 1.3rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+        .badge {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+            margin-top: 4px;
+        }
+        .badge.bull { background: rgba(16,185,129,0.2); color: var(--green); }
+        .badge.bear { background: rgba(239,68,68,0.2); color: var(--red); }
+        .badge.neutral { background: rgba(245,158,11,0.2); color: var(--gold); }
+        .log-container {
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            font-size: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .log-item { padding: 6px 0; border-bottom: 1px solid var(--border); }
+        .modal {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 999;
+        }
+        .modal-content {
+            background: var(--card-bg); padding: 24px; border-radius: 16px; max-width: 320px; text-align: center; border: 1px solid var(--border);
+        }
+        button {
+            padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; margin-top: 12px; background: var(--green); color: #000;
+        }
+        .toggle-btn {
+            padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 0.7rem;
+        }
+    </style>
 </head>
 <body>
-<div class="app">
-  <div class="hdr">
-    <div class="hlft">
-      <div class="hlogo">₿</div>
-      <div><div class="htitle">BTC SIGNAL</div><div class="hsub">POLYMARKET 5-MIN</div></div>
+
+<!-- Header -->
+<div class="header">
+    <div class="logo">₿</div>
+    <div><h1 style="font-size:1.2rem;">BTC 5m Trading Signal</h1><span style="font-size:0.7rem;color:var(--text2);">Real‑time analysis</span></div>
+    <button class="toggle-btn" onclick="toggleAudio()" style="margin-left:auto;">🔔 <span id="audioStatus">Off</span></button>
+</div>
+
+<!-- Price -->
+<div class="price-block">
+    <div>
+        <div style="font-size:0.7rem;color:var(--text2);">BTC/USDT</div>
+        <div class="price" id="priceDisplay">--</div>
     </div>
-    <div class="hrgt">
-      <div class="htime" id="htime">--:--:--</div>
-      <div class="dot" id="dot"></div>
+    <div class="change" id="changeDisplay">--</div>
+    <div style="margin-left:auto;font-size:0.75rem;color:var(--text2);" id="updateTime">--</div>
+</div>
+
+<!-- Mini Chart -->
+<canvas class="mini-chart" id="miniChart" width="400" height="200"></canvas>
+
+<!-- Trading Signal -->
+<div class="signal-box" id="signalBox">
+    <div class="signal-title">🎯 SINYAL TRADING</div>
+    <div class="signal-value" id="signalText">--</div>
+    <div style="font-size:0.8rem;color:var(--text2);margin-top:6px;">Keyakinan: <span id="confidenceText">--</span>%</div>
+    <div class="conf-bar"><div class="conf-fill" id="confFill" style="width:0%"></div></div>
+    <div style="font-size:0.7rem;color:var(--text2);margin-top:10px;" id="reasonText"></div>
+</div>
+
+<!-- Indikator Teknikal -->
+<div class="grid" id="indicatorsGrid"></div>
+
+<!-- Log Sinyal -->
+<div style="font-size:0.8rem;color:var(--text2);">📋 Log Sinyal Terbaru</div>
+<div class="log-container" id="logContainer">
+    <div style="color:var(--text2);">Menunggu sinyal...</div>
+</div>
+
+<!-- Modal Disclaimer -->
+<div class="modal" id="disclaimerModal">
+    <div class="modal-content">
+        <h3 style="color:var(--gold);">⚠️ Peringatan Risiko</h3>
+        <p style="font-size:0.8rem;margin:12px 0;">Bot ini hanya alat analisis teknikal. <strong>BUKAN jaminan profit.</strong><br>Trading crypto sangat berisiko. Gunakan dengan manajemen risiko ketat.</p>
+        <button onclick="closeDisclaimer()">Saya Mengerti</button>
     </div>
-  </div>
-  <div class="ldv" id="ldv"><div class="spin"></div><div class="ltx">MEMUAT DATA...</div></div>
-  <div id="main" style="display:none"></div>
 </div>
 
 <script>
-// ══ PWA MANIFEST ══
-const mfData={name:"BTC Signal — Polymarket 5Min",short_name:"BTC Signal",start_url:location.href,display:"standalone",background_color:"#070b14",theme_color:"#0a0e1a",icons:[{src:"data:image/svg+xml,"+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='36' fill='%230d1220'/><text x='96' y='135' font-family='Arial Black' font-size='115' text-anchor='middle' fill='%2300e5a0'>₿</text></svg>`),sizes:"192x192",type:"image/svg+xml"}]};
-const mfBlob=new Blob([JSON.stringify(mfData)],{type:'application/json'});
-document.getElementById('mf').href=URL.createObjectURL(mfBlob);
-
-// ══ KONFIGURASI ══
-const MIN_CONF = 55; // threshold sinyal
-
-// ══════════════════════════════════════════════════════
-// WINDOW TIMING — Polymarket BTC 5-min
-// Slug: btc-updown-5m-{unix_timestamp_start}
-// Setiap window = 300 detik, mulai dari Unix % 300 === 0
-// ══════════════════════════════════════════════════════
-function getWindow(){
-  const now=Math.floor(Date.now()/1000);
-  const start=now-(now%300);     // floor ke 300 terdekat
-  const close=start+300;
-  const secLeft=close-now;
-  return{start,close,secLeft,
-    slug:`btc-updown-5m-${start}`,
-    // window berikutnya (untuk prefetch)
-    nextStart:start+300,
-    nextSlug:`btc-updown-5m-${start+300}`
-  };
+// ========== PWA & Service Worker ==========
+if ('serviceWorker' in navigator) {
+    const swCode = `
+        const CACHE_NAME = 'btc-signal-v1';
+        self.addEventListener('fetch', e => {
+            e.respondWith(
+                caches.match(e.request).then(cached =>
+                    cached || fetch(e.request).then(r => { 
+                        if(r.ok && e.request.url.includes('api.binance.com')) {
+                            const clone = r.clone();
+                            caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
+                        }
+                        return r;
+                    }).catch(() => cached)
+                )
+            );
+        });
+    `;
+    navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode],{type:'application/javascript'})));
 }
 
-// ══ LIVE CLOCK ══
-setInterval(()=>{
-  const t=document.getElementById('htime');
-  if(t) t.textContent=new Date().toLocaleTimeString('id-ID');
-},1000);
-
-// ══ FETCH BTC PRICE — multi sumber ══
-const PRICE_SOURCES=[
-  ()=>fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT').then(r=>r.json()).then(d=>+d.price),
-  ()=>fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD').then(r=>r.json()).then(d=>+d.result.XXBTZUSD.c[0]),
-  ()=>fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot').then(r=>r.json()).then(d=>+d.data.amount),
-  ()=>fetch('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsym=USD').then(r=>r.json()).then(d=>+d.USD),
-  ()=>fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd').then(r=>r.json()).then(d=>+d.bitcoin.usd),
-];
-async function fetchPrice(){
-  for(const fn of PRICE_SOURCES){
-    try{const v=await fn();if(v&&v>1000)return v}catch{}
-  }
-  return null;
-}
-
-// ══ FETCH CANDLES (1m) ══
-const CANDLE_SOURCES=[
-  async()=>{
-    const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=30');
-    const d=await r.json();
-    return d.map(k=>({time:+k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4],vol:+k[5]}));
-  },
-  async()=>{
-    const r=await fetch('https://min-api.cryptocompare.com/data/v2/histominute?fsym=BTC&tsym=USD&limit=30');
-    const d=await r.json();
-    if(d.Response!=='Success')throw new Error();
-    return d.Data.Data.map(c=>({time:c.time,open:c.open,high:c.high,low:c.low,close:c.close,vol:c.volumefrom}));
-  },
-];
-async function fetchCandles(){
-  for(const fn of CANDLE_SOURCES){try{const v=await fn();if(v&&v.length>5)return v}catch{}}
-  return[];
-}
-
-// ══ FETCH POLYMARKET MARKET DATA via Gamma API ══
-// Gunakan slug deterministik — tidak perlu scan semua market
-async function fetchMarketBySlug(slug){
-  try{
-    // Coba event endpoint dulu
-    const r=await fetch(`https://gamma-api.polymarket.com/events?slug=${slug}&limit=1`);
-    const d=await r.json();
-    if(d&&d.length>0){
-      const ev=d[0];
-      const market=ev.markets&&ev.markets[0];
-      return market||null;
+// ========== Notifikasi & Audio ==========
+let audioEnabled = false;
+function toggleAudio() {
+    audioEnabled = !audioEnabled;
+    document.getElementById('audioStatus').textContent = audioEnabled ? 'On' : 'Off';
+    // Request notification permission if not granted
+    if (audioEnabled && Notification.permission !== 'granted') {
+        Notification.requestPermission();
     }
-  }catch{}
-  try{
-    // Fallback: markets endpoint
-    const r=await fetch(`https://gamma-api.polymarket.com/markets?slug=${slug}&limit=1`);
-    const d=await r.json();
-    if(Array.isArray(d)&&d.length>0)return d[0];
-    if(d&&d.data&&d.data.length>0)return d.data[0];
-  }catch{}
-  return null;
 }
 
-async function fetchMid(tokenId){
-  try{
-    const r=await fetch(`https://clob.polymarket.com/midpoint?token_id=${tokenId}`);
-    const d=await r.json();
-    return+d.mid;
-  }catch{return null}
+function notifySignal(signal) {
+    if (!audioEnabled) return;
+    // Vibrate (Android)
+    if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+    // Audio beep sederhana dengan Web Audio API
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.frequency.value = signal.includes('BUY') ? 800 : 400;
+        gain.gain.value = 0.3;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.2);
+    } catch(e) {}
+    // Web Notification
+    if (Notification.permission === 'granted') {
+        new Notification(`Sinyal BTC 5m: ${signal}`, {
+            body: `Sinyal ${signal} terdeteksi pada ${new Date().toLocaleTimeString()}`,
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="6" fill="%23f7931a"/><text x="16" y="24" font-size="20" text-anchor="middle" fill="white">₿</text></svg>'
+        });
+    }
 }
 
-async function getMarketPrices(market){
-  if(!market)return null;
-  let toks=market.clobTokenIds,outs=market.outcomes;
-  try{if(typeof toks==='string')toks=JSON.parse(toks);if(typeof outs==='string')outs=JSON.parse(outs)}catch{}
-  if(!toks||toks.length<2)return null;
+// ========== Data Handling ==========
+let candles = [];
+let currentPrice = null;
+let lastSignal = '';
+const signalLog = [];
 
-  // Identifikasi UP dan DOWN token
-  let ui=0,di=1;
-  if(outs&&outs.length>=2){
-    outs.forEach((o,i)=>{
-      const ol=o.toLowerCase();
-      if(ol==='up'||ol.includes('up'))ui=i;
-      else if(ol==='down'||ol.includes('down'))di=i;
-    });
-  }
-
-  const[up,dn]=await Promise.all([fetchMid(toks[ui]),fetchMid(toks[di])]);
-  
-  // Ambil "outcomePrices" sebagai fallback
-  let outPrices=market.outcomePrices;
-  try{if(typeof outPrices==='string')outPrices=JSON.parse(outPrices)}catch{}
-  
-  return{
-    up: up||(outPrices&&+outPrices[ui])||null,
-    dn: dn||(outPrices&&+outPrices[di])||null,
-    outcomes: outs,
-    tokenUp: toks[ui],
-    tokenDn: toks[di],
-  };
+function addLog(entry) {
+    signalLog.unshift({ time: new Date().toLocaleTimeString(), ...entry });
+    if (signalLog.length > 50) signalLog.pop();
+    renderLog();
 }
 
-// ══ INDIKATOR TEKNIKAL ══
-function calcRSI(closes,p=14){
-  if(closes.length<p+1)return 50;
-  let g=0,l=0;
-  for(let i=closes.length-p;i<closes.length;i++){const d=closes[i]-closes[i-1];d>0?g+=d:l-=d}
-  if(l===0)return 100;
-  return 100-(100/(1+(g/p)/(l/p)));
-}
-function calcEMA(closes,p){
-  if(!closes.length)return 0;
-  if(closes.length<p)return closes[closes.length-1];
-  const k=2/(p+1);let e=closes.slice(0,p).reduce((a,b)=>a+b)/p;
-  for(let i=p;i<closes.length;i++)e=closes[i]*k+e*(1-k);
-  return e;
-}
-function calcMACD(closes){
-  const e12=calcEMA(closes,12),e26=calcEMA(closes,26);
-  return e12-e26; // MACD line
-}
-function calcBBands(closes,p=20){
-  if(closes.length<p)return{upper:0,lower:0,mid:0};
-  const sl=closes.slice(-p);
-  const mean=sl.reduce((a,b)=>a+b)/p;
-  const std=Math.sqrt(sl.reduce((a,b)=>a+(b-mean)**2,0)/p);
-  return{upper:mean+2*std,lower:mean-2*std,mid:mean};
+function renderLog() {
+    const container = document.getElementById('logContainer');
+    container.innerHTML = signalLog.map(e => 
+        `<div class="log-item"><span style="color:var(--gold)">${e.time}</span> <strong style="color:${e.signal.includes('BUY')?'var(--green)':'var(--red)'}">${e.signal}</strong> (${e.confidence}%)</div>`
+    ).join('') || '<div style="color:var(--text2);">Tidak ada sinyal</div>';
 }
 
-// ══ ANALISA UTAMA ══
-// Fokus: prediksi UP/DOWN dalam sisa 5 menit window
-function analyze(candles, price, priceToBeat){
-  if(!candles||candles.length<10||!priceToBeat||!price)return null;
-  
-  const closes=candles.map(c=>c.close).concat([price]);
-  const highs=candles.map(c=>c.high);
-  const lows=candles.map(c=>c.low);
-  
-  let score=0;
-  const details=[];
-
-  // ── 1. POSISI VS PRICE TO BEAT (paling penting, bobot 45) ──
-  // Ini yang menentukan resolusi Polymarket
-  const diffFromPTB=(price-priceTobeat)/priceTobeat*100;
-  const ptbScore=Math.max(-45,Math.min(45,diffFromPTB*300));
-  score+=ptbScore;
-  details.push({n:'vs Price to Beat',v:`${diffFromPTB>=0?'+':''}${diffFromPTB.toFixed(3)}%`,c:ptbScore>=0?'bull':'bear'});
-
-  // ── 2. MOMENTUM 3 MENIT TERAKHIR (bobot 20) ──
-  if(closes.length>=4){
-    const mom3=(closes[closes.length-1]-closes[closes.length-4])/closes[closes.length-4]*100;
-    const mScore=Math.max(-20,Math.min(20,mom3*80));
-    score+=mScore;
-    details.push({n:'Momentum 3m',v:`${mom3>=0?'+':''}${mom3.toFixed(3)}%`,c:mScore>=0?'bull':'bear'});
-  }
-
-  // ── 3. RSI (bobot 15) ──
-  const rsiVal=calcRSI(closes);
-  let rScore=0;
-  if(rsiVal>70){rScore=-10}
-  else if(rsiVal<30){rScore=10}
-  else if(rsiVal>55){rScore=10}
-  else if(rsiVal<45){rScore=-10}
-  else rScore=(rsiVal-50)/5*5;
-  score+=rScore;
-  details.push({n:'RSI 14',v:rsiVal.toFixed(1),c:rScore>0?'bull':rScore<0?'bear':'neut'});
-
-  // ── 4. EMA CROSS 5/13 (bobot 10) ──
-  const e5=calcEMA(closes,5),e13=calcEMA(closes,13);
-  const eScore=e5>e13?10:-10;
-  score+=eScore;
-  details.push({n:'EMA 5/13',v:e5>e13?'Bullish':'Bearish',c:e5>e13?'bull':'bear'});
-
-  // ── 5. MACD (bobot 10) ──
-  if(closes.length>=26){
-    const macd=calcMACD(closes);
-    const mScore=macd>0?8:-8;
-    score+=mScore;
-    details.push({n:'MACD',v:macd>0?'Positif':'Negatif',c:macd>0?'bull':'bear'});
-  }
-
-  score=Math.max(-100,Math.min(100,score));
-  const conf=Math.abs(score);
-
-  // Bollinger Bands untuk info volatilitas
-  const bb=calcBBands(closes);
-  const bbPos=bb.upper>bb.lower?(price-bb.lower)/(bb.upper-bb.lower)*100:50;
-
-  return{
-    score,conf,
-    rsi:rsiVal,ema5:e5,ema13:e13,
-    diffFromPTB,
-    bbPos,bbUpper:bb.upper,bbLower:bb.lower,
-    details,
-    priceTobeat,
-  };
+// Fetch klines
+async function fetchKlines(limit = 200) {
+    try {
+        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=${limit}`);
+        const data = await res.json();
+        candles = data.map(k => ({
+            time: k[0],
+            open: parseFloat(k[1]),
+            high: parseFloat(k[2]),
+            low: parseFloat(k[3]),
+            close: parseFloat(k[4]),
+            volume: parseFloat(k[5])
+        }));
+        currentPrice = candles[candles.length-1].close;
+        return candles;
+    } catch(e) { return null; }
 }
 
-// ══ STATE ══
-let S={
-  price:null, priceTobeat:null,
-  candles:[], market:null,
-  upP:null, dnP:null,
-  slug:'', marketSlug:'',
-  analysis:null,
-  win:{start:0,close:0,secLeft:300,slug:''},
-  updated:null, loading:true, error:null,
-  openPriceCache:{}, // cache open price per window
-};
+// WebSocket realtime
+let ws = null;
+function connectWS() {
+    if(ws) ws.close();
+    ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+    ws.onmessage = (e) => {
+        const t = JSON.parse(e.data);
+        if(t.p) { currentPrice = parseFloat(t.p); updateUI(); }
+    };
+    ws.onclose = () => setTimeout(connectWS, 3000);
+}
 
-// ══ FETCH ALL ══
-async function fetchAll(){
-  setDot('');
-  S.error=null;
-  try{
-    const w=getWindow();
-    S.win=w;
+// ========== Technical Indicators ==========
+function SMA(data, p) {
+    let out = new Array(data.length).fill(null);
+    for(let i=p-1;i<data.length;i++) {
+        let sum=0; for(let j=i-p+1;j<=i;j++) sum+=data[j];
+        out[i]=sum/p;
+    }
+    return out;
+}
 
-    // Fetch price + candles paralel
-    const[price,candles]=await Promise.all([fetchPrice(),fetchCandles()]);
-    if(!price)throw new Error('Gagal ambil harga BTC dari semua sumber. Cek koneksi.');
+function EMA(data, p) {
+    let out = [data[0]];
+    let k = 2/(p+1);
+    for(let i=1;i<data.length;i++) out.push(data[i]*k + out[i-1]*(1-k));
+    return out;
+}
+
+function RSI(closes, p=14) {
+    if(closes.length<p+1) return {val:null,sig:'neutral'};
+    let gains=0, losses=0;
+    for(let i=1;i<=p;i++) {
+        let diff=closes[i]-closes[i-1];
+        if(diff>0) gains+=diff; else losses-=diff;
+    }
+    let avgGain=gains/p, avgLoss=losses/p;
+    let rsiVal = avgLoss===0?100:100-(100/(1+avgGain/avgLoss));
+    for(let i=p+1;i<closes.length;i++) {
+        let diff=closes[i]-closes[i-1];
+        avgGain = (avgGain*(p-1)+(diff>0?diff:0))/p;
+        avgLoss = (avgLoss*(p-1)+(diff<0?-diff:0))/p;
+        rsiVal = avgLoss===0?100:100-(100/(1+avgGain/avgLoss));
+    }
+    let sig = rsiVal>70?'bearish':rsiVal<30?'bullish':'neutral';
+    return {val:rsiVal,sig};
+}
+
+function MACD(closes) {
+    if(closes.length<35) return {hist:null,sig:'neutral'};
+    let ema12=EMA(closes,12), ema26=EMA(closes,26);
+    let macdLine = ema12.map((v,i)=>v-ema26[i]);
+    let signalLine = EMA(macdLine.slice(25),9);
+    let padded = new Array(25).fill(null).concat(signalLine);
+    let hist = macdLine.map((v,i)=>v-padded[i]);
+    let lastHist = hist[hist.length-1];
+    return {hist:lastHist, sig:lastHist>0?'bullish':'bearish'};
+}
+
+function Bollinger(closes, p=20, mult=2) {
+    let sma = SMA(closes,p);
+    let upper=[], lower=[];
+    for(let i=p-1;i<closes.length;i++) {
+        let slice=closes.slice(i-p+1,i+1);
+        let mean=sma[i];
+        let variance=slice.reduce((s,v)=>s+Math.pow(v-mean,2),0)/p;
+        let std=Math.sqrt(variance);
+        upper.push(mean+mult*std);
+        lower.push(mean-mult*std);
+    }
+    let lastUp=upper[upper.length-1], lastLow=lower[lower.length-1], lastSma=sma[sma.length-1];
+    return {upper:lastUp, lower:lastLow, sma:lastSma};
+}
+
+function analyze() {
+    if(candles.length<50) return null;
+    let closes = candles.map(c=>c.close);
+    let volumes = candles.map(c=>c.volume);
     
-    S.price=price;
-    S.candles=candles;
-    S.updated=new Date();
+    let rsi = RSI(closes);
+    let macd = MACD(closes);
+    let bb = Bollinger(closes);
+    let sma20 = SMA(closes,20);
+    let sma50 = SMA(closes,50);
+    let lastClose = closes[closes.length-1];
+    let prevClose = closes[closes.length-2];
+    let change = lastClose - prevClose;
+    let changePct = (change/prevClose)*100;
+    
+    // Momentum 3 candle
+    let mom3 = closes.slice(-4).reduce((sum,v,i,a)=>i>0?sum+(v-a[i-1]):0,0);
+    let mom5 = closes.slice(-6).reduce((sum,v,i,a)=>i>0?sum+(v-a[i-1]):0,0);
+    
+    // Volume momentum
+    let volAvg5 = volumes.slice(-5).reduce((a,b)=>a+b,0)/5;
+    let volAvg10 = volumes.slice(-10,-5).reduce((a,b)=>a+b,0)/5;
+    let volSignal = volAvg5>volAvg10*1.3?'bullish':volAvg5<volAvg10*0.7?'bearish':'neutral';
+    
+    // Scoring system
+    let bullish=0, bearish=0, total=0;
+    const add = (signal, weight) => {
+        total+=weight;
+        if(signal==='bullish') bullish+=weight;
+        else if(signal==='bearish') bearish+=weight;
+        else { bullish+=weight*0.5; bearish+=weight*0.5; }
+    };
+    add(rsi.sig, 1.5);
+    add(macd.sig, 1.5);
+    add(sma20[sma20.length-1]>sma50[sma50.length-1]?'bullish':'bearish', 1.2);
+    add(lastClose>bb.upper?'bearish':lastClose<bb.lower?'bullish':'neutral', 1.0);
+    add(mom3>0?'bullish':mom3<0?'bearish':'neutral', 1.0);
+    add(mom5>0?'bullish':mom5<0?'bearish':'neutral', 0.8);
+    add(volSignal, 0.7);
+    
+    let bullPct = (bullish/total)*100;
+    let bearPct = (bearish/total)*100;
+    
+    let signal, conf, color;
+    if(bullPct>=75) signal = 'STRONG BUY 🟢';
+    else if(bullPct>=60) signal = 'BUY 🟩';
+    else if(bullPct>40 && bearPct>40) signal = 'NEUTRAL ⬜';
+    else if(bearPct>=75) signal = 'STRONG SELL 🔴';
+    else if(bearPct>=60) signal = 'SELL 🟥';
+    else signal = 'NEUTRAL ⬜';
+    
+    conf = Math.max(bullPct, bearPct);
+    if(signal.includes('NEUTRAL')) conf = 50;
+    
+    // Alasan
+    let reasons = [];
+    if(rsi.val && rsi.val>70) reasons.push('RSI Overbought');
+    if(rsi.val && rsi.val<30) reasons.push('RSI Oversold');
+    if(macd.hist>0) reasons.push('MACD bullish');
+    else reasons.push('MACD bearish');
+    if(lastClose<bb.lower) reasons.push('Harga di bawah BB lower');
+    if(lastClose>bb.upper) reasons.push('Harga di atas BB upper');
+    if(volSignal==='bullish') reasons.push('Volume naik');
+    
+    return {
+        signal, confidence: Math.round(conf), bullPct: Math.round(bullPct), bearPct: Math.round(bearPct),
+        changePct, lastClose, rsi: rsi.val, macdHist: macd.hist, bbUpper: bb.upper, bbLower: bb.lower,
+        sma20: sma20[sma20.length-1], sma50: sma50[sma50.length-1], reasons: reasons.join(', ')
+    };
+}
 
-    // ── PRICE TO BEAT dari candle ──
-    // Cari close candle 1m yang time-nya paling dekat sebelum window start
-    // Ini approx harga Chainlink saat window dibuka
-    if(!S.openPriceCache[w.start]){
-      let ptb=null;
-      if(candles.length){
-        // Candle yang time-nya >= window start adalah candle pertama window
-        for(const c of candles){
-          if(c.time>=w.start){ptb=c.open;break}
-        }
-        // Fallback: close candle terakhir sebelum window
-        if(!ptb){
-          for(let i=candles.length-1;i>=0;i--){
-            if(candles[i].time<w.start){ptb=candles[i].close;break}
-          }
-        }
-      }
-      S.openPriceCache[w.start]=ptb||price;
+// ========== Mini Chart (Canvas) ==========
+function drawMiniChart() {
+    const canvas = document.getElementById('miniChart');
+    if(!canvas || candles.length<10) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width, h = canvas.height;
+    const closes = candles.slice(-50).map(c=>c.close);
+    const min = Math.min(...closes)*0.999;
+    const max = Math.max(...closes)*1.001;
+    const range = max-min;
+    ctx.clearRect(0,0,w,h);
+    
+    // grid
+    ctx.strokeStyle = '#334155';
+    ctx.lineWidth = 0.5;
+    for(let i=0;i<5;i++) {
+        let y = 20 + (h-40)*(i/4);
+        ctx.beginPath(); ctx.moveTo(30,y); ctx.lineTo(w-10,y); ctx.stroke();
     }
-    S.priceTobeat=S.openPriceCache[w.start];
-
-    // ── FETCH MARKET POLYMARKET ──
-    // Gunakan slug deterministik
-    const market=await fetchMarketBySlug(w.slug);
-    S.market=market;
-    S.marketSlug=w.slug;
-
-    if(market){
-      const prices=await getMarketPrices(market);
-      if(prices){S.upP=prices.up;S.dnP=prices.dn}
+    // price line
+    ctx.beginPath();
+    ctx.strokeStyle = '#f7931a';
+    ctx.lineWidth = 2;
+    for(let i=0;i<closes.length;i++) {
+        let x = 30 + (w-40)*(i/(closes.length-1));
+        let y = 20 + (h-40)*(1-(closes[i]-min)/range);
+        if(i===0) ctx.moveTo(x,y);
+        else ctx.lineTo(x,y);
     }
-
-    // ── ANALISA ──
-    S.analysis=analyze(candles,price,S.priceTobeat);
-    S.loading=false;
-    setDot('live');
-  }catch(e){
-    S.loading=false;
-    S.error=e.message||'Error tidak diketahui';
-    setDot('err');
-    console.error(e);
-  }
-  render();
+    ctx.stroke();
+    
+    // current price dot
+    let lastX = 30 + (w-40);
+    let lastY = 20 + (h-40)*(1-(closes[closes.length-1]-min)/range);
+    ctx.fillStyle = '#f7931a';
+    ctx.beginPath(); ctx.arc(lastX, lastY, 4, 0, 2*Math.PI); ctx.fill();
+    
+    // labels
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '10px JetBrains Mono';
+    ctx.fillText('$'+max.toFixed(0), 32, 16);
+    ctx.fillText('$'+min.toFixed(0), 32, h-5);
 }
 
-function setDot(c){
-  const d=document.getElementById('dot');
-  if(d)d.className='dot'+(c?' '+c:'');
-}
-
-// ══ TIMER — update tiap detik ══
-let lastWinStart=0;
-function startTimer(){
-  setInterval(()=>{
-    const w=getWindow();
-    S.win=w;
-    S.win.secLeft=w.secLeft;
-
-    // Window berganti → fetch ulang semua
-    if(w.start!==lastWinStart){
-      lastWinStart=w.start;
-      // Hapus cache window lama kecuali 2 terakhir
-      const keys=Object.keys(S.openPriceCache);
-      if(keys.length>3)keys.slice(0,-2).forEach(k=>delete S.openPriceCache[k]);
-      fetchAll();
-      return;
+// ========== Update UI ==========
+function updateUI() {
+    if(!candles.length) return;
+    
+    const analysis = analyze();
+    if(!analysis) return;
+    
+    document.getElementById('priceDisplay').textContent = '$' + (currentPrice||analysis.lastClose).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const chg = document.getElementById('changeDisplay');
+    chg.textContent = (analysis.changePct>=0?'▲':'▼')+' '+Math.abs(analysis.changePct).toFixed(2)+'%';
+    chg.className = 'change '+(analysis.changePct>=0?'up':'down');
+    document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
+    
+    // Sinyal
+    const sigText = document.getElementById('signalText');
+    const prevSignal = sigText.textContent;
+    sigText.textContent = analysis.signal;
+    sigText.style.color = analysis.signal.includes('BUY')?'var(--green)':analysis.signal.includes('SELL')?'var(--red)':'var(--gold)';
+    document.getElementById('confidenceText').textContent = analysis.confidence;
+    document.getElementById('confFill').style.width = analysis.confidence+'%';
+    document.getElementById('confFill').style.background = analysis.signal.includes('BUY')?'var(--green)':analysis.signal.includes('SELL')?'var(--red)':'var(--gold)';
+    document.getElementById('reasonText').textContent = analysis.reasons;
+    
+    // Jika sinyal berubah (dari bukan NEUTRAL ke BUY/SELL)
+    if(prevSignal !== analysis.signal && !analysis.signal.includes('NEUTRAL') && audioEnabled) {
+        notifySignal(analysis.signal);
+        addLog({signal: analysis.signal, confidence: analysis.confidence});
     }
-
-    // Update timer + price to beat diff saja (tanpa fetch ulang)
-    updateLiveElements();
-  },1000);
+    
+    // Indikator grid
+    const grid = document.getElementById('indicatorsGrid');
+    grid.innerHTML = [
+        {name:'RSI', val:analysis.rsi?.toFixed(2)||'--', sig:analysis.rsi>70?'bearish':analysis.rsi<30?'bullish':'neutral'},
+        {name:'MACD Hist', val:analysis.macdHist?.toFixed(2)||'--', sig:analysis.macdHist>0?'bullish':'bearish'},
+        {name:'SMA 20', val:analysis.sma20?.toFixed(2)||'--', sig:'neutral'},
+        {name:'SMA 50', val:analysis.sma50?.toFixed(2)||'--', sig:'neutral'},
+        {name:'BB Upper', val:analysis.bbUpper?.toFixed(2)||'--', sig:'neutral'},
+        {name:'BB Lower', val:analysis.bbLower?.toFixed(2)||'--', sig:'neutral'}
+    ].map(i=>`
+        <div class="ind-card">
+            <div class="ind-name">${i.name}</div>
+            <div class="ind-val">${i.val}</div>
+            <span class="badge ${i.sig==='bullish'?'bull':i.sig==='bearish'?'bear':'neutral'}">${i.sig}</span>
+        </div>
+    `).join('');
+    
+    drawMiniChart();
 }
 
-function updateLiveElements(){
-  // Timer
-  const el=document.getElementById('tv');
-  const fl=document.getElementById('pf');
-  if(el&&fl){
-    const s=S.win.secLeft;
-    const m=Math.floor(s/60),sc=s%60;
-    el.textContent=`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
-    el.className='tval '+(s<=30?'urg':s<=90?'wrn':'ok');
-    fl.style.width=`${(300-s)/300*100}%`;
-  }
-  // Window info
-  const wi=document.getElementById('wininfo');
-  if(wi&&S.win.secLeft){
-    wi.textContent=`Window mulai: ${new Date(S.win.start*1000).toLocaleTimeString('id-ID')} → selesai: ${new Date(S.win.close*1000).toLocaleTimeString('id-ID')}`;
-  }
+// ========== Init ==========
+function closeDisclaimer() {
+    document.getElementById('disclaimerModal').style.display='none';
+    localStorage.setItem('btcbot_disclaimer','accepted');
 }
 
-// ══ RENDER ══
-function render(){
-  document.getElementById('ldv').style.display='none';
-  const main=document.getElementById('main');
-  main.style.display='block';
-
-  if(S.error&&!S.price){
-    main.innerHTML=`
-      <div class="errb fade-in">
-        <div class="erri">⚠️</div>
-        <div class="errm">${S.error}</div>
-        <button class="rbtn" onclick="manualRefresh()" style="margin:0;width:100%">🔄 COBA LAGI</button>
-      </div>`;
-    return;
-  }
-
-  const{price,priceTobeat,analysis,upP,dnP,marketSlug,updated,win}=S;
-  const diff=price&&priceTobeat?price-priceTobeat:0;
-  const diffPct=priceTobeat&&priceTobeat>0?diff/priceTobeat*100:0;
-  const isUp=diff>=0;
-
-  // Sinyal
-  let sc='swt',bc='wt',bl='TUNGGU',sd='❓ TUNGGU',sdc='wt',cc='wt',sigDesc='';
-  if(analysis){
-    if(analysis.conf>=MIN_CONF){
-      if(analysis.score>0){
-        sc='sup';bc='up';bl='BELI UP';sd='⬆ UP';sdc='up';cc='up';
-        sigDesc='Momentum bullish — BTC kemungkinan naik dalam window ini';
-      }else{
-        sc='sdn';bc='dn';bl='BELI DOWN';sd='⬇ DOWN';sdc='dn';cc='dn';
-        sigDesc='Momentum bearish — BTC kemungkinan turun dalam window ini';
-      }
-    }else{
-      sigDesc=`Sinyal belum kuat (${analysis.conf.toFixed(0)}% < ${MIN_CONF}%) — tunggu momentum lebih jelas`;
+(async function init(){
+    if(localStorage.getItem('btcbot_disclaimer')!=='accepted') {
+        document.getElementById('disclaimerModal').style.display='flex';
     }
-  }
-
-  const conf=analysis?analysis.conf:0;
-  const rsi=analysis?analysis.rsi:50;
-  const emaBull=analysis?analysis.ema5>analysis.ema13:false;
-  const bbPos=analysis?analysis.bbPos:50;
-  const tStr=updated?updated.toLocaleTimeString('id-ID'):'-';
-  const s=win.secLeft,m=Math.floor(s/60),sec=s%60;
-  const tCls=s<=30?'urg':s<=90?'wrn':'ok';
-  const prog=(300-s)/300*100;
-
-  // Payout kalkulasi
-  let payoutHtml='';
-  if(analysis&&analysis.conf>=MIN_CONF){
-    const px=analysis.score>0?upP:dnP;
-    if(px&&px>0&&px<1){
-      const gain=((1/px-1)*100).toFixed(0);
-      const dir=analysis.score>0?'UP':'DOWN';
-      payoutHtml=`<div class="payout">Beli ${dir} @ $${px.toFixed(3)} → menang dapat <b>$${(1/px).toFixed(2)}</b> per saham (+${gain}%)</div>`;
-    }
-  }
-
-  // Indikator detail
-  const indRows=analysis&&analysis.details?analysis.details.map(d=>`
-    <div class="iitm">
-      <div class="inm">${d.n}</div>
-      <div class="ivl ${d.c}">${d.v}</div>
-    </div>`).join(''):`
-    <div class="iitm"><div class="inm">Data</div><div class="ivl neut">Memuat...</div></div>`;
-
-  main.innerHTML=`
-  <!-- HARGA BTC -->
-  <div class="card card-top fade-in">
-    <div class="plb">BTC / USD  LIVE</div>
-    <div class="pval"><s>$</s>${price?price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'---'}</div>
-    <div class="pmeta">
-      <div class="pm"><div class="pml">RSI</div><div class="pmv ${rsi>55?'up':rsi<45?'dn':'wt'}">${rsi.toFixed(0)}</div></div>
-      <div class="pm"><div class="pml">EMA Trend</div><div class="pmv ${emaBull?'up':'dn'}">${emaBull?'▲ Bull':'▼ Bear'}</div></div>
-      <div class="pm"><div class="pml">BB Position</div><div class="pmv ${bbPos>70?'dn':bbPos<30?'up':'wt'}">${bbPos.toFixed(0)}%</div></div>
-    </div>
-  </div>
-
-  <!-- PRICE TO BEAT — kunci resolusi Polymarket -->
-  <div class="ptb-box fade-in">
-    <div class="ptb-left">
-      <div class="ptb-label">📌 PRICE TO BEAT (Chainlink)</div>
-      <div class="ptb-val">$${priceTobeat?priceTobeat.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'---'}</div>
-    </div>
-    <div class="ptb-right">
-      <div class="ptb-diff-label">BTC vs Target</div>
-      <div class="ptb-diff ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${Math.abs(diffPct).toFixed(3)}%</div>
-    </div>
-  </div>
-
-  <!-- TIMER -->
-  <div class="card fade-in">
-    <div class="trow">
-      <div class="plb">⏱ SISA WINDOW</div>
-      <div class="tval ${tCls}" id="tv">${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}</div>
-    </div>
-    <div class="trk"><div class="tfil" id="pf" style="width:${prog}%"></div></div>
-    <div class="twin-info" id="wininfo">Window: ${new Date(win.start*1000).toLocaleTimeString('id-ID')} → ${new Date(win.close*1000).toLocaleTimeString('id-ID')}</div>
-  </div>
-
-  <!-- SINYAL UTAMA -->
-  <div class="sig ${sc} fade-in">
-    <div class="bdg ${bc}">SINYAL • ${bl}</div>
-    <div class="sigdir ${sdc}">${sd}</div>
-    <div class="sigsub">${sigDesc||'Mengumpulkan data analisa...'}</div>
-    <div class="crow">
-      <div class="clb">Kekuatan Sinyal</div>
-      <div class="cpct" style="color:var(--${cc})">${conf.toFixed(0)}%</div>
-    </div>
-    <div class="ctrk"><div class="cfil ${cc}" style="width:${conf}%"></div></div>
-  </div>
-
-  <!-- HARGA TOKEN POLYMARKET -->
-  <div class="card fade-in">
-    <div class="stitle">💱 Harga Token Polymarket</div>
-    <div class="pgrid">
-      <div class="pbox upb">
-        <div class="pblb up">⬆ UP</div>
-        <div class="pbv">${upP?'$'+upP.toFixed(3):'-'}</div>
-        <div class="pbp">${upP?(upP*100).toFixed(1)+'%':'-'}</div>
-      </div>
-      <div class="pbox dnb">
-        <div class="pblb dn">⬇ DOWN</div>
-        <div class="pbv">${dnP?'$'+dnP.toFixed(3):'-'}</div>
-        <div class="pbp">${dnP?(dnP*100).toFixed(1)+'%':'-'}</div>
-      </div>
-    </div>
-    ${payoutHtml}
-  </div>
-
-  <!-- INDIKATOR -->
-  <div class="card fade-in">
-    <div class="stitle">📊 Detail Indikator</div>
-    <div class="igrd">${indRows}</div>
-  </div>
-
-  <!-- LINK POLYMARKET -->
-  <a class="lnk fade-in" href="https://polymarket.com/event/${marketSlug||'btc-updown-5m-'+win.start}" target="_blank">
-    <div class="ltxt">
-      <small>🔗 BUKA MARKET INI DI POLYMARKET</small>
-      ${marketSlug||'btc-updown-5m-'+win.start}
-    </div>
-    <span style="font-size:18px">↗</span>
-  </a>
-
-  <button class="rbtn" id="rbtn" onclick="manualRefresh()">🔄 REFRESH MANUAL</button>
-  <div class="upd">Update: ${tStr} • Auto tiap window baru (5 menit)</div>
-  `;
-}
-
-// ══ MANUAL REFRESH ══
-async function manualRefresh(){
-  const b=document.getElementById('rbtn');
-  if(b){b.disabled=true;b.innerHTML='⏳ Memuat...'}
-  S.error=null;
-  await fetchAll();
-}
-
-// ══ INIT ══
-fetchAll();
-startTimer();
+    await fetchKlines();
+    connectWS();
+    updateUI();
+    setInterval(async ()=>{
+        await fetchKlines();
+        updateUI();
+    }, 30000);
+})();
 </script>
 </body>
 </html>
