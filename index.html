@@ -9,439 +9,654 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="BTC Signal">
 <title>BTC Signal — Polymarket 5Min</title>
-<link rel="manifest" href="#" id="manifest-link">
+<link rel="manifest" id="mf">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@700;900&family=Barlow:wght@400;600&display=swap');
-
-:root {
-  --bg:     #070b14;
-  --panel:  #111827;
-  --border: #1e2d45;
-  --up:     #00e5a0;
-  --down:   #ff4060;
-  --wait:   #f5a623;
-  --blue:   #3d9bff;
-  --text:   #e2eaf5;
-  --muted:  #4a6080;
-  --mono:   'Share Tech Mono', monospace;
-  --cond:   'Barlow Condensed', sans-serif;
-  --sans:   'Barlow', sans-serif;
+:root{
+  --bg:#070b14;--panel:#0f1623;--border:#1a2840;
+  --up:#00e5a0;--dn:#ff4060;--wt:#f5a623;--bl:#3d9bff;
+  --tx:#e2eaf5;--mu:#4a6080;
+  --mono:'Share Tech Mono',monospace;
+  --cond:'Barlow Condensed',sans-serif;
+  --sans:'Barlow',sans-serif;
 }
-
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);overflow-x:hidden;overscroll-behavior:none}
+html,body{height:100%;background:var(--bg);color:var(--tx);font-family:var(--sans);overflow-x:hidden;overscroll-behavior:none}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px);pointer-events:none;z-index:999}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(61,155,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(61,155,255,0.03) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
 
-body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);pointer-events:none;z-index:999}
-body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(61,155,255,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(61,155,255,0.04) 1px,transparent 1px);background-size:32px 32px;pointer-events:none;z-index:0}
-
-.app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;padding-bottom:28px;max-width:480px;margin:0 auto}
+.app{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column;padding-bottom:32px;max-width:460px;margin:0 auto}
 
 /* HEADER */
-.header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(7,11,20,0.92);position:sticky;top:0;z-index:10;backdrop-filter:blur(12px)}
-.hlogo{width:34px;height:34px;background:linear-gradient(135deg,#00e5a0,#3d9bff);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--cond);font-weight:900;font-size:18px;color:#070b14;margin-right:10px}
-.htitle{font-family:var(--cond);font-weight:900;font-size:17px;letter-spacing:1px;line-height:1}
-.hsub{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px}
-.hleft{display:flex;align-items:center}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+.hdr{padding:13px 15px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(7,11,20,0.94);position:sticky;top:0;z-index:10;backdrop-filter:blur(14px)}
+.hlogo{width:32px;height:32px;background:linear-gradient(135deg,#00e5a0,#3d9bff);border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:var(--cond);font-weight:900;font-size:17px;color:#070b14;margin-right:9px}
+.htitle{font-family:var(--cond);font-weight:900;font-size:16px;letter-spacing:1px;line-height:1}
+.hsub{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px}
+.hlft{display:flex;align-items:center}
+.hrgt{display:flex;align-items:center;gap:8px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--mu);flex-shrink:0}
 .dot.live{background:var(--up);animation:blink 2s infinite}
-.dot.err{background:var(--down)}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.dot.err{background:var(--dn)}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.htime{font-family:var(--mono);font-size:10px;color:var(--mu)}
 
 /* CARDS */
-.card{margin:10px 14px 0;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:14px 16px;position:relative;overflow:hidden}
-.card-accent::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--blue),var(--up))}
+.card{margin:9px 13px 0;background:var(--panel);border:1px solid var(--border);border-radius:13px;padding:13px 15px;position:relative;overflow:hidden}
+.card-top::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--bl),var(--up))}
 
-/* PRICE */
-.plabel{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px}
-.pval{font-family:var(--cond);font-size:40px;font-weight:900;letter-spacing:-1px;line-height:1;color:#fff}
-.pval span{font-size:20px;color:var(--muted)}
-.pmeta{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap}
-.pm{display:flex;flex-direction:column;gap:2px}
-.pml{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
-.pmv{font-family:var(--mono);font-size:13px}
-.pmv.up{color:var(--up)}.pmv.dn{color:var(--down)}
+/* BTC PRICE */
+.plb{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:2px}
+.pval{font-family:var(--cond);font-size:38px;font-weight:900;letter-spacing:-1px;line-height:1;color:#fff}
+.pval s{font-size:18px;color:var(--mu);text-decoration:none}
+.pmeta{display:flex;gap:12px;margin-top:9px;flex-wrap:wrap}
+.pm .pml{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px;text-transform:uppercase;margin-bottom:2px}
+.pm .pmv{font-family:var(--mono);font-size:12px;color:var(--tx)}
+.pmv.up{color:var(--up)}.pmv.dn{color:var(--dn)}.pmv.wt{color:var(--wt)}
+
+/* PRICE TO BEAT — kunci resolusi */
+.ptb-box{margin:9px 13px 0;background:rgba(61,155,255,0.07);border:1px solid rgba(61,155,255,0.25);border-radius:13px;padding:12px 15px;display:flex;align-items:center;justify-content:space-between}
+.ptb-left .ptb-label{font-family:var(--mono);font-size:9px;color:var(--bl);letter-spacing:2px;text-transform:uppercase;margin-bottom:3px}
+.ptb-left .ptb-val{font-family:var(--cond);font-size:28px;font-weight:900;color:#fff}
+.ptb-right{text-align:right}
+.ptb-right .ptb-diff-label{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px;margin-bottom:3px}
+.ptb-right .ptb-diff{font-family:var(--mono);font-size:16px;font-weight:700}
+.ptb-diff.up{color:var(--up)}.ptb-diff.dn{color:var(--dn)}.ptb-diff.eq{color:var(--wt)}
 
 /* TIMER */
-.trow{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
-.tval{font-family:var(--mono);font-size:22px;font-weight:700;color:#fff}
-.tval.urg{color:var(--down)}.tval.wrn{color:var(--wait)}.tval.ok{color:var(--up)}
-.track{height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden}
-.fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--blue),var(--up));transition:width .5s}
+.trow{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.tval{font-family:var(--mono);font-size:26px;font-weight:700;color:#fff;letter-spacing:2px}
+.tval.urg{color:var(--dn)}.tval.wrn{color:var(--wt)}.tval.ok{color:var(--up)}
+.trk{height:5px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden}
+.tfil{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--bl),var(--up));transition:width .8s linear}
+.twin-info{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px;margin-top:5px}
 
 /* SIGNAL */
-.sig-card{margin:10px 14px 0;border-radius:14px;padding:18px 16px;border:2px solid var(--border);background:var(--panel);transition:border-color .4s,background .4s}
-.sig-card.sup{border-color:var(--up);background:rgba(0,229,160,0.06)}
-.sig-card.sdn{border-color:var(--down);background:rgba(255,64,96,0.06)}
-.sig-card.swt{border-color:var(--wait);background:rgba(245,166,35,0.04)}
-
-.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 13px;border-radius:999px;font-family:var(--cond);font-weight:900;font-size:12px;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
-.badge.up{background:rgba(0,229,160,0.15);color:var(--up);border:1px solid rgba(0,229,160,0.3)}
-.badge.dn{background:rgba(255,64,96,0.15);color:var(--down);border:1px solid rgba(255,64,96,0.3)}
-.badge.wt{background:rgba(245,166,35,0.15);color:var(--wait);border:1px solid rgba(245,166,35,0.3)}
-
-.sigdir{font-family:var(--cond);font-weight:900;font-size:48px;letter-spacing:-2px;line-height:1;margin-bottom:5px}
-.sigdir.up{color:var(--up)}.sigdir.dn{color:var(--down)}.sigdir.wt{color:var(--wait)}
-.sigsub{font-size:12px;color:var(--muted);margin-bottom:13px}
-
-.crow{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
-.clabel{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
-.cpct{font-family:var(--mono);font-size:14px;font-weight:700}
-.ctrack{height:7px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden}
-.cfill{height:100%;border-radius:4px;transition:width .6s}
-.cfill.up{background:var(--up)}.cfill.dn{background:var(--down)}.cfill.wt{background:var(--wait)}
+.sig{margin:9px 13px 0;border-radius:13px;padding:16px 15px;border:2px solid var(--border);background:var(--panel);transition:border-color .3s,background .3s}
+.sig.sup{border-color:var(--up);background:rgba(0,229,160,0.05)}
+.sig.sdn{border-color:var(--dn);background:rgba(255,64,96,0.05)}
+.sig.swt{border-color:var(--wt);background:rgba(245,166,35,0.04)}
+.bdg{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:999px;font-family:var(--cond);font-weight:900;font-size:11px;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
+.bdg.up{background:rgba(0,229,160,0.13);color:var(--up);border:1px solid rgba(0,229,160,0.3)}
+.bdg.dn{background:rgba(255,64,96,0.13);color:var(--dn);border:1px solid rgba(255,64,96,0.3)}
+.bdg.wt{background:rgba(245,166,35,0.13);color:var(--wt);border:1px solid rgba(245,166,35,0.3)}
+.sigdir{font-family:var(--cond);font-weight:900;font-size:44px;letter-spacing:-2px;line-height:1;margin-bottom:4px}
+.sigdir.up{color:var(--up)}.sigdir.dn{color:var(--dn)}.sigdir.wt{color:var(--wt)}
+.sigsub{font-size:12px;color:var(--mu);margin-bottom:12px;line-height:1.5}
+.crow{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.clb{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px;text-transform:uppercase}
+.cpct{font-family:var(--mono);font-size:13px;font-weight:700}
+.ctrk{height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden}
+.cfil{height:100%;border-radius:3px;transition:width .5s}
+.cfil.up{background:var(--up)}.cfil.dn{background:var(--dn)}.cfil.wt{background:var(--wt)}
 
 /* MARKET PRICES */
 .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.pbox{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
-.pbox.upb{border-color:rgba(0,229,160,0.25)}.pbox.dnb{border-color:rgba(255,64,96,0.25)}
-.pblabel{font-family:var(--cond);font-weight:700;font-size:11px;letter-spacing:2px;margin-bottom:5px}
-.pblabel.up{color:var(--up)}.pblabel.dn{color:var(--down)}
-.pbval{font-family:var(--mono);font-size:20px;font-weight:700;color:#fff}
-.pbprob{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:2px}
-.payout{margin-top:10px;background:rgba(255,255,255,0.03);border-radius:8px;padding:9px 12px;font-family:var(--mono);font-size:12px;color:var(--text);text-align:center}
+.pbox{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:9px;padding:11px;text-align:center}
+.pbox.upb{border-color:rgba(0,229,160,0.22)}.pbox.dnb{border-color:rgba(255,64,96,0.22)}
+.pblb{font-family:var(--cond);font-weight:700;font-size:10px;letter-spacing:2px;margin-bottom:4px}
+.pblb.up{color:var(--up)}.pblb.dn{color:var(--dn)}
+.pbv{font-family:var(--mono);font-size:19px;font-weight:700;color:#fff}
+.pbp{font-family:var(--mono);font-size:10px;color:var(--mu);margin-top:2px}
+.payout{margin-top:9px;background:rgba(0,229,160,0.05);border:1px solid rgba(0,229,160,0.15);border-radius:8px;padding:9px 12px;font-family:var(--mono);font-size:11px;color:var(--tx);text-align:center;line-height:1.5}
 .payout b{color:var(--up)}
 
 /* INDICATORS */
-.igrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.iitem{background:rgba(255,255,255,0.03);border-radius:8px;padding:10px}
-.iname{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
-.ival{font-family:var(--mono);font-size:16px;font-weight:700}
-.ival.bull{color:var(--up)}.ival.bear{color:var(--down)}.ival.neut{color:var(--wait)}
-.idesc{font-size:10px;color:var(--muted);margin-top:2px}
+.igrd{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.iitm{background:rgba(255,255,255,0.025);border-radius:8px;padding:9px}
+.inm{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
+.ivl{font-family:var(--mono);font-size:15px;font-weight:700}
+.ivl.bull{color:var(--up)}.ivl.bear{color:var(--dn)}.ivl.neut{color:var(--wt)}
+.idsc{font-size:10px;color:var(--mu);margin-top:1px}
+
+/* SECTION TITLE */
+.stitle{font-family:var(--mono);font-size:9px;color:var(--mu);letter-spacing:2px;text-transform:uppercase;margin-bottom:9px}
 
 /* LINK */
-.lcard{margin:10px 14px 0;background:rgba(61,155,255,0.06);border:1px solid rgba(61,155,255,0.2);border-radius:14px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:var(--blue);transition:background .2s}
-.lcard:active{background:rgba(61,155,255,0.12)}
-.ltext{font-family:var(--mono);font-size:12px}
-.ltext small{display:block;font-size:9px;color:var(--muted);letter-spacing:1px;margin-bottom:2px}
+.lnk{margin:9px 13px 0;background:rgba(61,155,255,0.05);border:1px solid rgba(61,155,255,0.18);border-radius:13px;padding:12px 15px;display:flex;align-items:center;justify-content:space-between;text-decoration:none;color:var(--bl);transition:background .2s}
+.lnk:active{background:rgba(61,155,255,0.12)}
+.ltxt{font-family:var(--mono);font-size:11px}
+.ltxt small{display:block;font-size:9px;color:var(--mu);letter-spacing:1px;margin-bottom:1px}
 
-/* BUTTON */
-.rbtn{margin:12px 14px 0;width:calc(100% - 28px);padding:14px;background:linear-gradient(135deg,rgba(0,229,160,0.15),rgba(61,155,255,0.15));border:1px solid rgba(0,229,160,0.3);border-radius:14px;color:var(--up);font-family:var(--cond);font-weight:700;font-size:15px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
-.rbtn:active{transform:scale(0.98)}.rbtn:disabled{opacity:0.5;cursor:not-allowed}
-
-.lupdate{text-align:center;font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:10px;letter-spacing:1px}
+/* BTN */
+.rbtn{margin:11px 13px 0;width:calc(100% - 26px);padding:13px;background:linear-gradient(135deg,rgba(0,229,160,0.13),rgba(61,155,255,0.13));border:1px solid rgba(0,229,160,0.28);border-radius:13px;color:var(--up);font-family:var(--cond);font-weight:700;font-size:14px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:7px}
+.rbtn:active{transform:scale(.98)}.rbtn:disabled{opacity:.4;cursor:not-allowed}
+.upd{text-align:center;font-family:var(--mono);font-size:9px;color:var(--mu);margin-top:9px;letter-spacing:1px}
 
 /* LOADING */
-.loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;gap:18px}
-.spinner{width:42px;height:42px;border:3px solid rgba(0,229,160,0.2);border-top-color:var(--up);border-radius:50%;animation:spin .8s linear infinite}
+.ldv{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:72vh;gap:16px}
+.spin{width:40px;height:40px;border:3px solid rgba(0,229,160,0.18);border-top-color:var(--up);border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.ltxt{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:2px;animation:blink 1.2s infinite}
+.ltx{font-family:var(--mono);font-size:10px;color:var(--mu);letter-spacing:2px;animation:blink 1.2s infinite}
 
 /* ERROR */
-.errbox{margin:16px;background:rgba(255,64,96,0.08);border:1px solid rgba(255,64,96,0.3);border-radius:14px;padding:18px;text-align:center}
-.errico{font-size:26px;margin-bottom:8px}
-.errmsg{font-size:13px;color:#ff8099;margin-bottom:14px;line-height:1.6}
+.errb{margin:14px;background:rgba(255,64,96,0.07);border:1px solid rgba(255,64,96,0.28);border-radius:13px;padding:16px;text-align:center}
+.erri{font-size:24px;margin-bottom:7px}
+.errm{font-size:12px;color:#ff8099;margin-bottom:13px;line-height:1.6}
 
-.sec-title{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px}
-.fade-in{animation:fi .4s ease}
-@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fi .35s ease}
+@keyframes fi{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
-<div class="app" id="app">
-  <div class="header">
-    <div class="hleft">
+<div class="app">
+  <div class="hdr">
+    <div class="hlft">
       <div class="hlogo">₿</div>
-      <div>
-        <div class="htitle">BTC SIGNAL</div>
-        <div class="hsub">POLYMARKET 5-MIN</div>
-      </div>
+      <div><div class="htitle">BTC SIGNAL</div><div class="hsub">POLYMARKET 5-MIN</div></div>
     </div>
-    <div class="dot" id="dot"></div>
+    <div class="hrgt">
+      <div class="htime" id="htime">--:--:--</div>
+      <div class="dot" id="dot"></div>
+    </div>
   </div>
-  <div class="loading" id="loadView">
-    <div class="spinner"></div>
-    <div class="ltxt">MENGAMBIL DATA...</div>
-  </div>
+  <div class="ldv" id="ldv"><div class="spin"></div><div class="ltx">MEMUAT DATA...</div></div>
   <div id="main" style="display:none"></div>
 </div>
 
 <script>
-// ── PWA Manifest ──
-const mf={name:"BTC Signal — Polymarket 5Min",short_name:"BTC Signal",start_url:location.href,display:"standalone",background_color:"#070b14",theme_color:"#0a0e1a",icons:[{src:"data:image/svg+xml,"+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='36' fill='%230d1220'/><text x='96' y='135' font-family='Arial Black' font-size='115' text-anchor='middle' fill='%2300e5a0'>₿</text></svg>`),sizes:"192x192",type:"image/svg+xml"},{src:"data:image/svg+xml,"+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230d1220'/><text x='256' y='360' font-family='Arial Black' font-size='300' text-anchor='middle' fill='%2300e5a0'>₿</text></svg>`),sizes:"512x512",type:"image/svg+xml"}]};
-const mb=new Blob([JSON.stringify(mf)],{type:'application/json'});
-document.getElementById('manifest-link').href=URL.createObjectURL(mb);
+// ══ PWA MANIFEST ══
+const mfData={name:"BTC Signal — Polymarket 5Min",short_name:"BTC Signal",start_url:location.href,display:"standalone",background_color:"#070b14",theme_color:"#0a0e1a",icons:[{src:"data:image/svg+xml,"+encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='36' fill='%230d1220'/><text x='96' y='135' font-family='Arial Black' font-size='115' text-anchor='middle' fill='%2300e5a0'>₿</text></svg>`),sizes:"192x192",type:"image/svg+xml"}]};
+const mfBlob=new Blob([JSON.stringify(mfData)],{type:'application/json'});
+document.getElementById('mf').href=URL.createObjectURL(mfBlob);
 
-// ── CONFIG ──
-const MIN_CONF=60;
+// ══ KONFIGURASI ══
+const MIN_CONF = 55; // threshold sinyal
 
-// ── API LIST — dicoba satu per satu sampai berhasil ──
-const BTC_APIS=[
-  // 1. Binance (paling cepat)
-  async()=>{const r=await fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',{mode:'cors'});const d=await r.json();return parseFloat(d.price)},
-  // 2. CoinGecko
-  async()=>{const r=await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');const d=await r.json();return d.bitcoin.usd},
-  // 3. Kraken
-  async()=>{const r=await fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD');const d=await r.json();return parseFloat(d.result.XXBTZUSD.c[0])},
-  // 4. Coinbase
-  async()=>{const r=await fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot');const d=await r.json();return parseFloat(d.data.amount)},
-  // 5. CryptoCompare
-  async()=>{const r=await fetch('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD');const d=await r.json();return d.USD},
+// ══════════════════════════════════════════════════════
+// WINDOW TIMING — Polymarket BTC 5-min
+// Slug: btc-updown-5m-{unix_timestamp_start}
+// Setiap window = 300 detik, mulai dari Unix % 300 === 0
+// ══════════════════════════════════════════════════════
+function getWindow(){
+  const now=Math.floor(Date.now()/1000);
+  const start=now-(now%300);     // floor ke 300 terdekat
+  const close=start+300;
+  const secLeft=close-now;
+  return{start,close,secLeft,
+    slug:`btc-updown-5m-${start}`,
+    // window berikutnya (untuk prefetch)
+    nextStart:start+300,
+    nextSlug:`btc-updown-5m-${start+300}`
+  };
+}
+
+// ══ LIVE CLOCK ══
+setInterval(()=>{
+  const t=document.getElementById('htime');
+  if(t) t.textContent=new Date().toLocaleTimeString('id-ID');
+},1000);
+
+// ══ FETCH BTC PRICE — multi sumber ══
+const PRICE_SOURCES=[
+  ()=>fetch('https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT').then(r=>r.json()).then(d=>+d.price),
+  ()=>fetch('https://api.kraken.com/0/public/Ticker?pair=XBTUSD').then(r=>r.json()).then(d=>+d.result.XXBTZUSD.c[0]),
+  ()=>fetch('https://api.coinbase.com/v2/prices/BTC-USD/spot').then(r=>r.json()).then(d=>+d.data.amount),
+  ()=>fetch('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsym=USD').then(r=>r.json()).then(d=>+d.USD),
+  ()=>fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd').then(r=>r.json()).then(d=>+d.bitcoin.usd),
 ];
-
-const CANDLE_APIS=[
-  // CryptoCompare 1m candle
-  async()=>{const r=await fetch('https://min-api.cryptocompare.com/data/v2/histominute?fsym=BTC&tsym=USD&limit=30');const d=await r.json();if(d.Response!=='Success')throw new Error('fail');return d.Data.Data},
-  // Binance klines
-  async()=>{const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=30',{mode:'cors'});const rows=await r.json();return rows.map(k=>({time:k[0]/1000,open:parseFloat(k[1]),close:parseFloat(k[4])}))},
-];
-
-async function tryApis(apis){
-  for(const fn of apis){
-    try{const v=await fn();if(v) return v}catch(e){}
+async function fetchPrice(){
+  for(const fn of PRICE_SOURCES){
+    try{const v=await fn();if(v&&v>1000)return v}catch{}
   }
   return null;
 }
 
-// ── STATE ──
-let S={price:null,open:null,candles:[],upP:null,downP:null,slug:'',updated:null,analysis:null,winStart:0,secLeft:300,loading:true};
+// ══ FETCH CANDLES (1m) ══
+const CANDLE_SOURCES=[
+  async()=>{
+    const r=await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1m&limit=30');
+    const d=await r.json();
+    return d.map(k=>({time:+k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4],vol:+k[5]}));
+  },
+  async()=>{
+    const r=await fetch('https://min-api.cryptocompare.com/data/v2/histominute?fsym=BTC&tsym=USD&limit=30');
+    const d=await r.json();
+    if(d.Response!=='Success')throw new Error();
+    return d.Data.Data.map(c=>({time:c.time,open:c.open,high:c.high,low:c.low,close:c.close,vol:c.volumefrom}));
+  },
+];
+async function fetchCandles(){
+  for(const fn of CANDLE_SOURCES){try{const v=await fn();if(v&&v.length>5)return v}catch{}}
+  return[];
+}
 
-// ── WINDOW ──
-function getWin(){const n=Math.floor(Date.now()/1000);const s=n-(n%300);return{start:s,close:s+300,sec:s+300-n}}
+// ══ FETCH POLYMARKET MARKET DATA via Gamma API ══
+// Gunakan slug deterministik — tidak perlu scan semua market
+async function fetchMarketBySlug(slug){
+  try{
+    // Coba event endpoint dulu
+    const r=await fetch(`https://gamma-api.polymarket.com/events?slug=${slug}&limit=1`);
+    const d=await r.json();
+    if(d&&d.length>0){
+      const ev=d[0];
+      const market=ev.markets&&ev.markets[0];
+      return market||null;
+    }
+  }catch{}
+  try{
+    // Fallback: markets endpoint
+    const r=await fetch(`https://gamma-api.polymarket.com/markets?slug=${slug}&limit=1`);
+    const d=await r.json();
+    if(Array.isArray(d)&&d.length>0)return d[0];
+    if(d&&d.data&&d.data.length>0)return d.data[0];
+  }catch{}
+  return null;
+}
 
-// ── ANALISA ──
-function rsi(cls,p=14){
-  if(cls.length<p+1)return 50;
+async function fetchMid(tokenId){
+  try{
+    const r=await fetch(`https://clob.polymarket.com/midpoint?token_id=${tokenId}`);
+    const d=await r.json();
+    return+d.mid;
+  }catch{return null}
+}
+
+async function getMarketPrices(market){
+  if(!market)return null;
+  let toks=market.clobTokenIds,outs=market.outcomes;
+  try{if(typeof toks==='string')toks=JSON.parse(toks);if(typeof outs==='string')outs=JSON.parse(outs)}catch{}
+  if(!toks||toks.length<2)return null;
+
+  // Identifikasi UP dan DOWN token
+  let ui=0,di=1;
+  if(outs&&outs.length>=2){
+    outs.forEach((o,i)=>{
+      const ol=o.toLowerCase();
+      if(ol==='up'||ol.includes('up'))ui=i;
+      else if(ol==='down'||ol.includes('down'))di=i;
+    });
+  }
+
+  const[up,dn]=await Promise.all([fetchMid(toks[ui]),fetchMid(toks[di])]);
+  
+  // Ambil "outcomePrices" sebagai fallback
+  let outPrices=market.outcomePrices;
+  try{if(typeof outPrices==='string')outPrices=JSON.parse(outPrices)}catch{}
+  
+  return{
+    up: up||(outPrices&&+outPrices[ui])||null,
+    dn: dn||(outPrices&&+outPrices[di])||null,
+    outcomes: outs,
+    tokenUp: toks[ui],
+    tokenDn: toks[di],
+  };
+}
+
+// ══ INDIKATOR TEKNIKAL ══
+function calcRSI(closes,p=14){
+  if(closes.length<p+1)return 50;
   let g=0,l=0;
-  for(let i=cls.length-p;i<cls.length;i++){const d=cls[i]-cls[i-1];d>0?g+=d:l-=d}
+  for(let i=closes.length-p;i<closes.length;i++){const d=closes[i]-closes[i-1];d>0?g+=d:l-=d}
   if(l===0)return 100;
   return 100-(100/(1+(g/p)/(l/p)));
 }
-function ema(cls,p){
-  if(cls.length<p)return cls[cls.length-1]||0;
-  const k=2/(p+1);let e=cls.slice(0,p).reduce((a,b)=>a+b)/p;
-  for(let i=p;i<cls.length;i++)e=cls[i]*k+e*(1-k);
+function calcEMA(closes,p){
+  if(!closes.length)return 0;
+  if(closes.length<p)return closes[closes.length-1];
+  const k=2/(p+1);let e=closes.slice(0,p).reduce((a,b)=>a+b)/p;
+  for(let i=p;i<closes.length;i++)e=closes[i]*k+e*(1-k);
   return e;
 }
-function analyze(candles,price,openP){
-  if(!candles.length||candles.length<15||!openP)return null;
-  const cls=candles.map(c=>parseFloat(c.close||c[4]||c)).concat([price]);
-  let sc=0;
-  const dp=(price-openP)/openP*100;
-  sc+=Math.max(-40,Math.min(40,dp*200));
-  const r=rsi(cls);
-  if(r>70)sc-=15;else if(r<30)sc+=15;else if(r>55)sc+=10;else if(r<45)sc-=10;
-  sc+=ema(cls,5)>ema(cls,13)?15:-15;
-  if(cls.length>=6){const m=(cls[cls.length-1]-cls[cls.length-6])/cls[cls.length-6]*100;sc+=Math.max(-20,Math.min(20,m*50))}
-  sc=Math.max(-100,Math.min(100,sc));
-  return{score:sc,conf:Math.abs(sc),rsi:r,e5:ema(cls,5),e13:ema(cls,13),dp};
+function calcMACD(closes){
+  const e12=calcEMA(closes,12),e26=calcEMA(closes,26);
+  return e12-e26; // MACD line
+}
+function calcBBands(closes,p=20){
+  if(closes.length<p)return{upper:0,lower:0,mid:0};
+  const sl=closes.slice(-p);
+  const mean=sl.reduce((a,b)=>a+b)/p;
+  const std=Math.sqrt(sl.reduce((a,b)=>a+(b-mean)**2,0)/p);
+  return{upper:mean+2*std,lower:mean-2*std,mid:mean};
 }
 
-// ── POLYMARKET ──
-async function fetchMarket(){
-  try{
-    const r=await fetch('https://gamma-api.polymarket.com/markets?active=true&closed=false&limit=100');
-    const ms=await r.json();
-    for(const m of ms){
-      const t=((m.slug||'')+(m.question||'')).toLowerCase();
-      if((t.includes('bitcoin')||t.includes('btc'))&&(t.includes('5m')||t.includes('5 min')||t.includes('5-min'))&&(t.includes('up or down')||t.includes('updown')))return m;
-    }
-  }catch(e){}
-  return null;
-}
-async function fetchMid(tid){
-  try{const r=await fetch('https://clob.polymarket.com/midpoint?token_id='+tid);const d=await r.json();return parseFloat(d.mid)}catch{return null}
+// ══ ANALISA UTAMA ══
+// Fokus: prediksi UP/DOWN dalam sisa 5 menit window
+function analyze(candles, price, priceToBeat){
+  if(!candles||candles.length<10||!priceToBeat||!price)return null;
+  
+  const closes=candles.map(c=>c.close).concat([price]);
+  const highs=candles.map(c=>c.high);
+  const lows=candles.map(c=>c.low);
+  
+  let score=0;
+  const details=[];
+
+  // ── 1. POSISI VS PRICE TO BEAT (paling penting, bobot 45) ──
+  // Ini yang menentukan resolusi Polymarket
+  const diffFromPTB=(price-priceTobeat)/priceTobeat*100;
+  const ptbScore=Math.max(-45,Math.min(45,diffFromPTB*300));
+  score+=ptbScore;
+  details.push({n:'vs Price to Beat',v:`${diffFromPTB>=0?'+':''}${diffFromPTB.toFixed(3)}%`,c:ptbScore>=0?'bull':'bear'});
+
+  // ── 2. MOMENTUM 3 MENIT TERAKHIR (bobot 20) ──
+  if(closes.length>=4){
+    const mom3=(closes[closes.length-1]-closes[closes.length-4])/closes[closes.length-4]*100;
+    const mScore=Math.max(-20,Math.min(20,mom3*80));
+    score+=mScore;
+    details.push({n:'Momentum 3m',v:`${mom3>=0?'+':''}${mom3.toFixed(3)}%`,c:mScore>=0?'bull':'bear'});
+  }
+
+  // ── 3. RSI (bobot 15) ──
+  const rsiVal=calcRSI(closes);
+  let rScore=0;
+  if(rsiVal>70){rScore=-10}
+  else if(rsiVal<30){rScore=10}
+  else if(rsiVal>55){rScore=10}
+  else if(rsiVal<45){rScore=-10}
+  else rScore=(rsiVal-50)/5*5;
+  score+=rScore;
+  details.push({n:'RSI 14',v:rsiVal.toFixed(1),c:rScore>0?'bull':rScore<0?'bear':'neut'});
+
+  // ── 4. EMA CROSS 5/13 (bobot 10) ──
+  const e5=calcEMA(closes,5),e13=calcEMA(closes,13);
+  const eScore=e5>e13?10:-10;
+  score+=eScore;
+  details.push({n:'EMA 5/13',v:e5>e13?'Bullish':'Bearish',c:e5>e13?'bull':'bear'});
+
+  // ── 5. MACD (bobot 10) ──
+  if(closes.length>=26){
+    const macd=calcMACD(closes);
+    const mScore=macd>0?8:-8;
+    score+=mScore;
+    details.push({n:'MACD',v:macd>0?'Positif':'Negatif',c:macd>0?'bull':'bear'});
+  }
+
+  score=Math.max(-100,Math.min(100,score));
+  const conf=Math.abs(score);
+
+  // Bollinger Bands untuk info volatilitas
+  const bb=calcBBands(closes);
+  const bbPos=bb.upper>bb.lower?(price-bb.lower)/(bb.upper-bb.lower)*100:50;
+
+  return{
+    score,conf,
+    rsi:rsiVal,ema5:e5,ema13:e13,
+    diffFromPTB,
+    bbPos,bbUpper:bb.upper,bbLower:bb.lower,
+    details,
+    priceTobeat,
+  };
 }
 
-// ── FETCH ALL ──
+// ══ STATE ══
+let S={
+  price:null, priceTobeat:null,
+  candles:[], market:null,
+  upP:null, dnP:null,
+  slug:'', marketSlug:'',
+  analysis:null,
+  win:{start:0,close:0,secLeft:300,slug:''},
+  updated:null, loading:true, error:null,
+  openPriceCache:{}, // cache open price per window
+};
+
+// ══ FETCH ALL ══
 async function fetchAll(){
   setDot('');
+  S.error=null;
   try{
-    const[price,candles,market]=await Promise.all([tryApis(BTC_APIS),tryApis(CANDLE_APIS),fetchMarket()]);
-    if(!price)throw new Error('Semua sumber harga BTC gagal. Cek koneksi internet.');
+    const w=getWindow();
+    S.win=w;
 
+    // Fetch price + candles paralel
+    const[price,candles]=await Promise.all([fetchPrice(),fetchCandles()]);
+    if(!price)throw new Error('Gagal ambil harga BTC dari semua sumber. Cek koneksi.');
+    
     S.price=price;
-    S.candles=candles||[];
+    S.candles=candles;
     S.updated=new Date();
 
-    const w=getWin();
-    S.winStart=w.start;
-    S.secLeft=w.sec;
+    // ── PRICE TO BEAT dari candle ──
+    // Cari close candle 1m yang time-nya paling dekat sebelum window start
+    // Ini approx harga Chainlink saat window dibuka
+    if(!S.openPriceCache[w.start]){
+      let ptb=null;
+      if(candles.length){
+        // Candle yang time-nya >= window start adalah candle pertama window
+        for(const c of candles){
+          if(c.time>=w.start){ptb=c.open;break}
+        }
+        // Fallback: close candle terakhir sebelum window
+        if(!ptb){
+          for(let i=candles.length-1;i>=0;i--){
+            if(candles[i].time<w.start){ptb=candles[i].close;break}
+          }
+        }
+      }
+      S.openPriceCache[w.start]=ptb||price;
+    }
+    S.priceTobeat=S.openPriceCache[w.start];
 
-    // Cari open price dari candle
-    if(S.candles.length){
-      for(const c of S.candles){if((c.time||0)>=w.start){S.open=parseFloat(c.open);break}}
-      if(!S.open)S.open=price;
-    }else S.open=price;
-
-    S.analysis=analyze(S.candles,price,S.open);
+    // ── FETCH MARKET POLYMARKET ──
+    // Gunakan slug deterministik
+    const market=await fetchMarketBySlug(w.slug);
+    S.market=market;
+    S.marketSlug=w.slug;
 
     if(market){
-      S.slug=market.slug||'';
-      let toks=market.clobTokenIds,outs=market.outcomes;
-      try{if(typeof toks==='string')toks=JSON.parse(toks);if(typeof outs==='string')outs=JSON.parse(outs)}catch{}
-      if(toks&&toks.length>=2){
-        let ui=0,di=1;
-        if(outs)outs.forEach((o,i)=>{if(o.toLowerCase().includes('up'))ui=i;else if(o.toLowerCase().includes('down'))di=i});
-        const[up,dn]=await Promise.all([fetchMid(toks[ui]),fetchMid(toks[di])]);
-        S.upP=up;S.downP=dn;
-      }
+      const prices=await getMarketPrices(market);
+      if(prices){S.upP=prices.up;S.dnP=prices.dn}
     }
+
+    // ── ANALISA ──
+    S.analysis=analyze(candles,price,S.priceTobeat);
     S.loading=false;
     setDot('live');
   }catch(e){
     S.loading=false;
-    S.error=e.message;
+    S.error=e.message||'Error tidak diketahui';
     setDot('err');
+    console.error(e);
   }
   render();
 }
 
-function setDot(c){const d=document.getElementById('dot');if(d)d.className='dot'+(c?' '+c:'')}
+function setDot(c){
+  const d=document.getElementById('dot');
+  if(d)d.className='dot'+(c?' '+c:'');
+}
 
-// ── TIMER ──
+// ══ TIMER — update tiap detik ══
 let lastWinStart=0;
 function startTimer(){
   setInterval(()=>{
-    const w=getWin();
-    S.secLeft=w.sec;
-    if(w.start!==lastWinStart){lastWinStart=w.start;fetchAll()}
-    else updateTimer();
+    const w=getWindow();
+    S.win=w;
+    S.win.secLeft=w.secLeft;
+
+    // Window berganti → fetch ulang semua
+    if(w.start!==lastWinStart){
+      lastWinStart=w.start;
+      // Hapus cache window lama kecuali 2 terakhir
+      const keys=Object.keys(S.openPriceCache);
+      if(keys.length>3)keys.slice(0,-2).forEach(k=>delete S.openPriceCache[k]);
+      fetchAll();
+      return;
+    }
+
+    // Update timer + price to beat diff saja (tanpa fetch ulang)
+    updateLiveElements();
   },1000);
 }
-function updateTimer(){
-  const el=document.getElementById('tv');const fl=document.getElementById('pf');
-  if(!el||!fl)return;
-  const s=S.secLeft,m=Math.floor(s/60),sc=s%60;
-  el.textContent=`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
-  el.className='tval '+(s<=30?'urg':s<=60?'wrn':'ok');
-  fl.style.width=`${(300-s)/300*100}%`;
+
+function updateLiveElements(){
+  // Timer
+  const el=document.getElementById('tv');
+  const fl=document.getElementById('pf');
+  if(el&&fl){
+    const s=S.win.secLeft;
+    const m=Math.floor(s/60),sc=s%60;
+    el.textContent=`${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
+    el.className='tval '+(s<=30?'urg':s<=90?'wrn':'ok');
+    fl.style.width=`${(300-s)/300*100}%`;
+  }
+  // Window info
+  const wi=document.getElementById('wininfo');
+  if(wi&&S.win.secLeft){
+    wi.textContent=`Window mulai: ${new Date(S.win.start*1000).toLocaleTimeString('id-ID')} → selesai: ${new Date(S.win.close*1000).toLocaleTimeString('id-ID')}`;
+  }
 }
 
-// ── RENDER ──
+// ══ RENDER ══
 function render(){
-  document.getElementById('loadView').style.display='none';
+  document.getElementById('ldv').style.display='none';
   const main=document.getElementById('main');
   main.style.display='block';
 
   if(S.error&&!S.price){
     main.innerHTML=`
-      <div class="errbox fade-in">
-        <div class="errico">⚠️</div>
-        <div class="errmsg">${S.error}</div>
+      <div class="errb fade-in">
+        <div class="erri">⚠️</div>
+        <div class="errm">${S.error}</div>
         <button class="rbtn" onclick="manualRefresh()" style="margin:0;width:100%">🔄 COBA LAGI</button>
       </div>`;
     return;
   }
 
-  const{price,open,analysis,upP,downP,slug,updated,secLeft}=S;
-  const diff=price&&open?price-open:0;
-  const diffPct=open?diff/open*100:0;
-  const up=diff>=0;
+  const{price,priceTobeat,analysis,upP,dnP,marketSlug,updated,win}=S;
+  const diff=price&&priceTobeat?price-priceTobeat:0;
+  const diffPct=priceTobeat&&priceTobeat>0?diff/priceTobeat*100:0;
+  const isUp=diff>=0;
 
-  let sc='swt',bc='wt',bl='TUNGGU',sd='❓ TUNGGU',sdc='wt',cc='wt';
-  if(analysis&&analysis.conf>=MIN_CONF){
-    if(analysis.score>0){sc='sup';bc='up';bl='BELI UP';sd='⬆ UP';sdc='up';cc='up'}
-    else{sc='sdn';bc='dn';bl='BELI DOWN';sd='⬇ DOWN';sdc='dn';cc='dn'}
+  // Sinyal
+  let sc='swt',bc='wt',bl='TUNGGU',sd='❓ TUNGGU',sdc='wt',cc='wt',sigDesc='';
+  if(analysis){
+    if(analysis.conf>=MIN_CONF){
+      if(analysis.score>0){
+        sc='sup';bc='up';bl='BELI UP';sd='⬆ UP';sdc='up';cc='up';
+        sigDesc='Momentum bullish — BTC kemungkinan naik dalam window ini';
+      }else{
+        sc='sdn';bc='dn';bl='BELI DOWN';sd='⬇ DOWN';sdc='dn';cc='dn';
+        sigDesc='Momentum bearish — BTC kemungkinan turun dalam window ini';
+      }
+    }else{
+      sigDesc=`Sinyal belum kuat (${analysis.conf.toFixed(0)}% < ${MIN_CONF}%) — tunggu momentum lebih jelas`;
+    }
   }
+
   const conf=analysis?analysis.conf:0;
-  const r=analysis?analysis.rsi:50;
-  const emab=analysis?analysis.e5>analysis.e13:false;
+  const rsi=analysis?analysis.rsi:50;
+  const emaBull=analysis?analysis.ema5>analysis.ema13:false;
+  const bbPos=analysis?analysis.bbPos:50;
   const tStr=updated?updated.toLocaleTimeString('id-ID'):'-';
-  const m=Math.floor(secLeft/60),sec=secLeft%60;
-  const tCls=secLeft<=30?'urg':secLeft<=60?'wrn':'ok';
-  const prog=(300-secLeft)/300*100;
+  const s=win.secLeft,m=Math.floor(s/60),sec=s%60;
+  const tCls=s<=30?'urg':s<=90?'wrn':'ok';
+  const prog=(300-s)/300*100;
 
-  let payH='';
+  // Payout kalkulasi
+  let payoutHtml='';
   if(analysis&&analysis.conf>=MIN_CONF){
-    const px=analysis.score>0?upP:downP;
-    if(px){const p=((1/px-1)*100).toFixed(0);payH=`<div class="payout">Modal $1 → menang dapat <b>$${(1/px).toFixed(2)}</b> (+${p}%)</div>`}
+    const px=analysis.score>0?upP:dnP;
+    if(px&&px>0&&px<1){
+      const gain=((1/px-1)*100).toFixed(0);
+      const dir=analysis.score>0?'UP':'DOWN';
+      payoutHtml=`<div class="payout">Beli ${dir} @ $${px.toFixed(3)} → menang dapat <b>$${(1/px).toFixed(2)}</b> per saham (+${gain}%)</div>`;
+    }
   }
+
+  // Indikator detail
+  const indRows=analysis&&analysis.details?analysis.details.map(d=>`
+    <div class="iitm">
+      <div class="inm">${d.n}</div>
+      <div class="ivl ${d.c}">${d.v}</div>
+    </div>`).join(''):`
+    <div class="iitm"><div class="inm">Data</div><div class="ivl neut">Memuat...</div></div>`;
 
   main.innerHTML=`
-  <div class="card card-accent fade-in">
-    <div class="plabel">BTC / USD  LIVE</div>
-    <div class="pval"><span>$</span>${price?price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'---'}</div>
+  <!-- HARGA BTC -->
+  <div class="card card-top fade-in">
+    <div class="plb">BTC / USD  LIVE</div>
+    <div class="pval"><s>$</s>${price?price.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'---'}</div>
     <div class="pmeta">
-      <div class="pm"><div class="pml">Open 5m</div><div class="pmv">$${open?open.toLocaleString('en-US',{minimumFractionDigits:2}):'---'}</div></div>
-      <div class="pm"><div class="pml">Selisih</div><div class="pmv ${up?'up':'dn'}">${up?'▲':'▼'} ${Math.abs(diffPct).toFixed(3)}%</div></div>
-      <div class="pm"><div class="pml">RSI 14</div><div class="pmv">${r.toFixed(0)}</div></div>
+      <div class="pm"><div class="pml">RSI</div><div class="pmv ${rsi>55?'up':rsi<45?'dn':'wt'}">${rsi.toFixed(0)}</div></div>
+      <div class="pm"><div class="pml">EMA Trend</div><div class="pmv ${emaBull?'up':'dn'}">${emaBull?'▲ Bull':'▼ Bear'}</div></div>
+      <div class="pm"><div class="pml">BB Position</div><div class="pmv ${bbPos>70?'dn':bbPos<30?'up':'wt'}">${bbPos.toFixed(0)}%</div></div>
     </div>
   </div>
 
+  <!-- PRICE TO BEAT — kunci resolusi Polymarket -->
+  <div class="ptb-box fade-in">
+    <div class="ptb-left">
+      <div class="ptb-label">📌 PRICE TO BEAT (Chainlink)</div>
+      <div class="ptb-val">$${priceTobeat?priceTobeat.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}):'---'}</div>
+    </div>
+    <div class="ptb-right">
+      <div class="ptb-diff-label">BTC vs Target</div>
+      <div class="ptb-diff ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${Math.abs(diffPct).toFixed(3)}%</div>
+    </div>
+  </div>
+
+  <!-- TIMER -->
   <div class="card fade-in">
     <div class="trow">
-      <div class="plabel">⏱ SISA WAKTU WINDOW</div>
+      <div class="plb">⏱ SISA WINDOW</div>
       <div class="tval ${tCls}" id="tv">${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}</div>
     </div>
-    <div class="track"><div class="fill" id="pf" style="width:${prog}%"></div></div>
+    <div class="trk"><div class="tfil" id="pf" style="width:${prog}%"></div></div>
+    <div class="twin-info" id="wininfo">Window: ${new Date(win.start*1000).toLocaleTimeString('id-ID')} → ${new Date(win.close*1000).toLocaleTimeString('id-ID')}</div>
   </div>
 
-  <div class="sig-card ${sc} fade-in">
-    <div class="badge ${bc}">SINYAL • ${bl}</div>
+  <!-- SINYAL UTAMA -->
+  <div class="sig ${sc} fade-in">
+    <div class="bdg ${bc}">SINYAL • ${bl}</div>
     <div class="sigdir ${sdc}">${sd}</div>
-    <div class="sigsub">${analysis?(analysis.conf>=MIN_CONF?'Kekuatan cukup — eksekusi manual di Polymarket':`Sinyal lemah (${conf.toFixed(0)}% < ${MIN_CONF}%) — TUNGGU`):'Mengumpulkan data...'}</div>
+    <div class="sigsub">${sigDesc||'Mengumpulkan data analisa...'}</div>
     <div class="crow">
-      <div class="clabel">Kekuatan Sinyal</div>
+      <div class="clb">Kekuatan Sinyal</div>
       <div class="cpct" style="color:var(--${cc})">${conf.toFixed(0)}%</div>
     </div>
-    <div class="ctrack"><div class="cfill ${cc}" style="width:${conf}%"></div></div>
+    <div class="ctrk"><div class="cfil ${cc}" style="width:${conf}%"></div></div>
   </div>
 
+  <!-- HARGA TOKEN POLYMARKET -->
   <div class="card fade-in">
-    <div class="sec-title">💱 Harga Token Polymarket</div>
+    <div class="stitle">💱 Harga Token Polymarket</div>
     <div class="pgrid">
       <div class="pbox upb">
-        <div class="pblabel up">⬆ UP</div>
-        <div class="pbval">${upP?'$'+upP.toFixed(3):'-'}</div>
-        <div class="pbprob">${upP?(upP*100).toFixed(1)+'% prob':'---'}</div>
+        <div class="pblb up">⬆ UP</div>
+        <div class="pbv">${upP?'$'+upP.toFixed(3):'-'}</div>
+        <div class="pbp">${upP?(upP*100).toFixed(1)+'%':'-'}</div>
       </div>
       <div class="pbox dnb">
-        <div class="pblabel dn">⬇ DOWN</div>
-        <div class="pbval">${downP?'$'+downP.toFixed(3):'-'}</div>
-        <div class="pbprob">${downP?(downP*100).toFixed(1)+'% prob':'---'}</div>
+        <div class="pblb dn">⬇ DOWN</div>
+        <div class="pbv">${dnP?'$'+dnP.toFixed(3):'-'}</div>
+        <div class="pbp">${dnP?(dnP*100).toFixed(1)+'%':'-'}</div>
       </div>
     </div>
-    ${payH}
+    ${payoutHtml}
   </div>
 
+  <!-- INDIKATOR -->
   <div class="card fade-in">
-    <div class="sec-title">📊 Indikator</div>
-    <div class="igrid">
-      <div class="iitem">
-        <div class="iname">RSI 14</div>
-        <div class="ival ${r>70?'bear':r<30?'bull':r>55?'bull':'bear'}">${r.toFixed(1)}</div>
-        <div class="idesc">${r>70?'Overbought':r<30?'Oversold':r>55?'Bullish':'Bearish'}</div>
-      </div>
-      <div class="iitem">
-        <div class="iname">EMA 5/13</div>
-        <div class="ival ${emab?'bull':'bear'}">${emab?'📈 Bullish':'📉 Bearish'}</div>
-        <div class="idesc">Tren jangka pendek</div>
-      </div>
-      <div class="iitem">
-        <div class="iname">Vs Open</div>
-        <div class="ival ${up?'bull':'bear'}">${diffPct>=0?'+':''}${diffPct.toFixed(3)}%</div>
-        <div class="idesc">Posisi vs open window</div>
-      </div>
-      <div class="iitem">
-        <div class="iname">Skor</div>
-        <div class="ival ${analysis&&analysis.score>0?'bull':analysis&&analysis.score<0?'bear':'neut'}">${analysis?analysis.score.toFixed(0):'0'}</div>
-        <div class="idesc">-100 bear / +100 bull</div>
-      </div>
-    </div>
+    <div class="stitle">📊 Detail Indikator</div>
+    <div class="igrd">${indRows}</div>
   </div>
 
-  <a class="lcard fade-in" href="https://polymarket.com/${slug?'market/'+slug:'crypto/5M'}" target="_blank">
-    <div class="ltext"><small>BUKA DI POLYMARKET →</small>${slug?slug.substring(0,30)+'...':'polymarket.com/crypto/5M'}</div>
-    <span style="font-size:20px;color:var(--blue)">↗</span>
+  <!-- LINK POLYMARKET -->
+  <a class="lnk fade-in" href="https://polymarket.com/event/${marketSlug||'btc-updown-5m-'+win.start}" target="_blank">
+    <div class="ltxt">
+      <small>🔗 BUKA MARKET INI DI POLYMARKET</small>
+      ${marketSlug||'btc-updown-5m-'+win.start}
+    </div>
+    <span style="font-size:18px">↗</span>
   </a>
 
   <button class="rbtn" id="rbtn" onclick="manualRefresh()">🔄 REFRESH MANUAL</button>
-  <div class="lupdate">Update: ${tStr} • Auto tiap 5 menit</div>
+  <div class="upd">Update: ${tStr} • Auto tiap window baru (5 menit)</div>
   `;
 }
 
+// ══ MANUAL REFRESH ══
 async function manualRefresh(){
   const b=document.getElementById('rbtn');
-  if(b){b.disabled=true;b.textContent='⏳ Mengambil data...'}
+  if(b){b.disabled=true;b.innerHTML='⏳ Memuat...'}
   S.error=null;
   await fetchAll();
 }
 
-// ── INIT ──
+// ══ INIT ══
 fetchAll();
 startTimer();
-setInterval(fetchAll,5*60*1000);
 </script>
 </body>
 </html>
