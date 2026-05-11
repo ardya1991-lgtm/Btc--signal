@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="BTC Signal">
+<title>BTC Signal — Polymarket 5Min</title>
+
+<!-- PWA Manifest inline via JS -->
+<link rel="manifest" href="#" id="manifest-placeholder">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@300;400;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap');
+
+:root {
+  --bg:       #070b14;
+  --bg2:      #0d1220;
+  --panel:    #111827;
+  --border:   #1e2d45;
+  --up:       #00e5a0;
+  --down:     #ff4060;
+  --wait:     #f5a623;
+  --blue:     #3d9bff;
+  --text:     #e2eaf5;
+  --muted:    #4a6080;
+  --mono:     'Share Tech Mono', monospace;
+  --sans:     'Barlow', sans-serif;
+  --cond:     'Barlow Condensed', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow-x: hidden;
+  overscroll-behavior: none;
+}
+
+/* SCANLINE OVERLAY */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.08) 2px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* GRID BACKGROUND */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(61,155,255,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(61,155,255,0.04) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 24px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* ── HEADER ── */
+.header {
+  padding: 16px 18px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  background: rgba(7,11,20,0.9);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(12px);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #00e5a0, #3d9bff);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 900;
+  color: #070b14;
+  font-family: var(--cond);
+  letter-spacing: -1px;
+}
+
+.app-title {
+  font-family: var(--cond);
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+.app-sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: pulse-dot 2s infinite;
+}
+
+.status-dot.live { background: var(--up); }
+.status-dot.error { background: var(--down); }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ── BTC PRICE CARD ── */
+.price-card {
+  margin: 14px 16px 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.price-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--blue), var(--up));
+}
+
+.price-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.price-value {
+  font-family: var(--cond);
+  font-size: 42px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  line-height: 1;
+  color: #fff;
+}
+
+.price-value span { font-size: 22px; color: var(--muted); }
+
+.price-meta {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.price-meta-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.price-meta-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.price-meta-val {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.price-meta-val.up { color: var(--up); }
+.price-meta-val.down { color: var(--down); }
+
+/* ── TIMER ── */
+.timer-card {
+  margin: 10px 16px 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 18px;
+}
+
+.timer-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.timer-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.timer-val {
+  font-family: var(--mono);
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.timer-val.urgent { color: var(--down); }
+.timer-val.warning { color: var(--wait); }
+.timer-val.safe { color: var(--up); }
+
+.progress-track {
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--blue), var(--up));
+  transition: width 0.5s ease;
+}
+
+/* ── SIGNAL CARD ── */
+.signal-card {
+  margin: 10px 16px 0;
+  border-radius: 14px;
+  padding: 20px 18px;
+  border: 2px solid var(--border);
+  background: var(--panel);
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.4s, background 0.4s;
+}
+
+.signal-card.up-signal {
+  border-color: var(--up);
+  background: rgba(0,229,160,0.06);
+}
+
+.signal-card.down-signal {
+  border-color: var(--down);
+  background: rgba(255,64,96,0.06);
+}
+
+.signal-card.wait-signal {
+  border-color: var(--wait);
+  background: rgba(245,166,35,0.04);
+}
+
+.signal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-family: var(--cond);
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.signal-badge.up { background: rgba(0,229,160,0.15); color: var(--up); border: 1px solid rgba(0,229,160,0.3); }
+.signal-badge.down { background: rgba(255,64,96,0.15); color: var(--down); border: 1px solid rgba(255,64,96,0.3); }
+.signal-badge.wait { background: rgba(245,166,35,0.15); color: var(--wait); border: 1px solid rgba(245,166,35,0.3); }
+
+.signal-direction {
+  font-family: var(--cond);
+  font-weight: 900;
+  font-size: 52px;
+  letter-spacing: -2px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.signal-direction.up { color: var(--up); }
+.signal-direction.down { color: var(--down); }
+.signal-direction.wait { color: var(--wait); }
+
+.signal-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
+/* Confidence bar */
+.conf-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.conf-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.conf-pct {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.conf-track {
+  height: 8px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.conf-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.conf-fill.up { background: var(--up); }
+.conf-fill.down { background: var(--down); }
+.conf-fill.wait { background: var(--wait); }
+
+/* ── MARKET PRICES ── */
+.market-card {
+  margin: 10px 16px 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 18px;
+}
+
+.section-title {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.price-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.price-box {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+
+.price-box.up-box { border-color: rgba(0,229,160,0.25); }
+.price-box.down-box { border-color: rgba(255,64,96,0.25); }
+
+.price-box-label {
+  font-family: var(--cond);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+
+.price-box-label.up { color: var(--up); }
+.price-box-label.down { color: var(--down); }
+
+.price-box-val {
+  font-family: var(--mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.price-box-prob {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 3px;
+}
+
+.payout-text {
+  margin-top: 12px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  text-align: center;
+}
+
+.payout-text span { color: var(--up); font-weight: 700; }
+
+/* ── INDIKATOR MINI ── */
+.indicators-card {
+  margin: 10px 16px 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 18px;
+}
+
+.ind-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ind-item {
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.ind-name {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.ind-val {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.ind-val.bull { color: var(--up); }
+.ind-val.bear { color: var(--down); }
+.ind-val.neut { color: var(--wait); }
+
+.ind-desc {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ── LINK POLYMARKET ── */
+.link-card {
+  margin: 10px 16px 0;
+  background: rgba(61,155,255,0.06);
+  border: 1px solid rgba(61,155,255,0.2);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--blue);
+  transition: background 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.link-card:active { background: rgba(61,155,255,0.12); }
+
+.link-text {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--blue);
+}
+
+.link-text small {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 2px;
+  letter-spacing: 1px;
+}
+
+/* ── REFRESH BTN ── */
+.refresh-btn {
+  margin: 14px 16px 0;
+  width: calc(100% - 32px);
+  padding: 14px;
+  background: linear-gradient(135deg, rgba(0,229,160,0.15), rgba(61,155,255,0.15));
+  border: 1px solid rgba(0,229,160,0.3);
+  border-radius: 14px;
+  color: var(--up);
+  font-family: var(--cond);
+  font-weight: 700;
+  font-size: 16px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.refresh-btn:active { transform: scale(0.98); }
+.refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── LAST UPDATE ── */
+.last-update {
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 12px;
+  letter-spacing: 1px;
+}
+
+/* ── LOADING ── */
+.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 20px;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgba(0,229,160,0.2);
+  border-top-color: var(--up);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-text {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 2px;
+  animation: blink 1.2s infinite;
+}
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ── ERROR ── */
+.error-box {
+  margin: 16px;
+  background: rgba(255,64,96,0.08);
+  border: 1px solid rgba(255,64,96,0.3);
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+}
+
+.error-icon { font-size: 28px; margin-bottom: 8px; }
+.error-msg { font-size: 13px; color: #ff8099; margin-bottom: 12px; }
+
+/* FADE IN */
+.fade-in { animation: fadeIn 0.4s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">₿</div>
+      <div>
+        <div class="app-title">BTC SIGNAL</div>
+        <div class="app-sub">POLYMARKET 5-MIN</div>
+      </div>
+    </div>
+    <div class="status-dot" id="statusDot"></div>
+  </div>
+
+  <div class="loading" id="loadingView">
+    <div class="spinner"></div>
+    <div class="loading-text">MENGAMBIL DATA...</div>
+  </div>
+
+  <div id="mainView" style="display:none"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════
+const MIN_CONFIDENCE = 60;
+const REFRESH_MS = 5 * 60 * 1000; // 5 menit
+const PRICE_API = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd";
+const CANDLE_API = "https://min-api.cryptocompare.com/data/v2/histominute?fsym=BTC&tsym=USD&limit=30";
+const GAMMA_API = "https://gamma-api.polymarket.com/markets";
+const CLOB_API = "https://clob.polymarket.com/midpoint";
+
+// ══════════════════════════════════════════════
+// PWA MANIFEST (inject dinamis)
+// ══════════════════════════════════════════════
+const manifest = {
+  name: "BTC Signal — Polymarket 5Min",
+  short_name: "BTC Signal",
+  description: "Sinyal trading BTC 5-menit di Polymarket",
+  start_url: window.location.href,
+  display: "standalone",
+  background_color: "#070b14",
+  theme_color: "#0a0e1a",
+  orientation: "portrait",
+  icons: [
+    { src: "data:image/svg+xml," + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='32' fill='%230d1220'/><text x='96' y='130' font-family='Arial Black' font-size='110' text-anchor='middle' fill='%2300e5a0'>₿</text></svg>`), sizes: "192x192", type: "image/svg+xml" },
+    { src: "data:image/svg+xml," + encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='80' fill='%230d1220'/><text x='256' y='360' font-family='Arial Black' font-size='300' text-anchor='middle' fill='%2300e5a0'>₿</text></svg>`), sizes: "512x512", type: "image/svg+xml" }
+  ]
+};
+
+const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+const manifestURL = URL.createObjectURL(blob);
+document.querySelector('link[rel="manifest"]').href = manifestURL;
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let state = {
+  btcPrice: null,
+  openPrice: null,
+  candles: [],
+  market: null,
+  upPrice: null,
+  downPrice: null,
+  marketSlug: '',
+  lastUpdate: null,
+  loading: true,
+  error: null,
+  analysis: null,
+  windowStart: 0,
+  windowClose: 0,
+  secLeft: 300,
+};
+
+// ══════════════════════════════════════════════
+// DATA FETCHING
+// ══════════════════════════════════════════════
+async function fetchBTC() {
+  const r = await fetch(PRICE_API);
+  const d = await r.json();
+  return d.bitcoin.usd;
+}
+
+async function fetchCandles() {
+  const r = await fetch(CANDLE_API);
+  const d = await r.json();
+  if (d.Response !== "Success") return [];
+  return d.Data.Data;
+}
+
+async function fetchMarket() {
+  const r = await fetch(GAMMA_API + "?active=true&closed=false&limit=100");
+  const markets = await r.json();
+  for (const m of markets) {
+    const text = ((m.slug||'') + ' ' + (m.question||'')).toLowerCase();
+    if ((text.includes('bitcoin')||text.includes('btc')) &&
+        (text.includes('5m')||text.includes('5 min')||text.includes('5-min')) &&
+        (text.includes('up or down')||text.includes('updown'))) {
+      return m;
+    }
+  }
+  return null;
+}
+
+async function fetchMid(tokenId) {
+  try {
+    const r = await fetch(CLOB_API + "?token_id=" + tokenId);
+    const d = await r.json();
+    return parseFloat(d.mid);
+  } catch { return null; }
+}
+
+// ══════════════════════════════════════════════
+// ANALISA
+// ══════════════════════════════════════════════
+function calcRSI(closes, period=14) {
+  if (closes.length < period+1) return 50;
+  let gains=0, losses=0;
+  for (let i=closes.length-period; i<closes.length; i++) {
+    const d = closes[i]-closes[i-1];
+    if(d>0) gains+=d; else losses-=d;
+  }
+  if(losses===0) return 100;
+  const rs=(gains/period)/(losses/period);
+  return 100-(100/(1+rs));
+}
+
+function calcEMA(closes, period) {
+  if(closes.length<period) return closes[closes.length-1]||0;
+  const k=2/(period+1);
+  let e=closes.slice(0,period).reduce((a,b)=>a+b)/period;
+  for(let i=period;i<closes.length;i++) e=closes[i]*k+e*(1-k);
+  return e;
+}
+
+function analyze(candles, price, openPrice) {
+  if (!candles.length || candles.length<15 || !openPrice) return null;
+  const closes = candles.map(c=>c.close).concat([price]);
+  let score = 0;
+
+  // 1. posisi vs open
+  const diffPct = (price-openPrice)/openPrice*100;
+  score += Math.max(-40, Math.min(40, diffPct*200));
+
+  // 2. RSI
+  const r = calcRSI(closes);
+  if(r>70) score-=15;
+  else if(r<30) score+=15;
+  else if(r>55) score+=10;
+  else if(r<45) score-=10;
+
+  // 3. EMA cross
+  score += calcEMA(closes,5)>calcEMA(closes,13) ? 15 : -15;
+
+  // 4. Momentum 5m
+  if(closes.length>=6) {
+    const mom=(closes[closes.length-1]-closes[closes.length-6])/closes[closes.length-6]*100;
+    score+=Math.max(-20,Math.min(20,mom*50));
+  }
+
+  score=Math.max(-100,Math.min(100,score));
+  return {
+    score,
+    confidence: Math.abs(score),
+    rsi: calcRSI(closes),
+    ema5: calcEMA(closes,5),
+    ema13: calcEMA(closes,13),
+    diffPct,
+  };
+}
+
+// ══════════════════════════════════════════════
+// WINDOW TIMER
+// ══════════════════════════════════════════════
+function getWindow() {
+  const now = Math.floor(Date.now()/1000);
+  const start = now - (now%300);
+  return { start, close: start+300, secLeft: start+300-now };
+}
+
+// ══════════════════════════════════════════════
+// FETCH ALL & UPDATE STATE
+// ══════════════════════════════════════════════
+async function fetchAll() {
+  setStatus('loading');
+  state.error = null;
+
+  try {
+    // Fetch paralel
+    const [price, candles, market] = await Promise.all([
+      fetchBTC(),
+      fetchCandles(),
+      fetchMarket(),
+    ]);
+
+    state.btcPrice = price;
+    state.candles = candles;
+    state.lastUpdate = new Date();
+
+    // Window
+    const w = getWindow();
+    state.windowStart = w.start;
+    state.windowClose = w.close;
+    state.secLeft = w.secLeft;
+
+    // Open price dari candle
+    if (candles.length) {
+      for (const c of candles) {
+        if (c.time >= w.start) { state.openPrice = c.open; break; }
+      }
+      if (!state.openPrice) state.openPrice = price;
+    }
+
+    // Market prices
+    if (market) {
+      state.market = market;
+      state.marketSlug = market.slug || '';
+      let tokens = market.clobTokenIds;
+      let outcomes = market.outcomes;
+      try {
+        if (typeof tokens==='string') tokens=JSON.parse(tokens);
+        if (typeof outcomes==='string') outcomes=JSON.parse(outcomes);
+      } catch{}
+
+      if (tokens && tokens.length>=2) {
+        let upIdx=0, downIdx=1;
+        if (outcomes) {
+          for(let i=0;i<outcomes.length;i++){
+            if(outcomes[i].toLowerCase().includes('up')) upIdx=i;
+            else if(outcomes[i].toLowerCase().includes('down')) downIdx=i;
+          }
+        }
+        const [up, down] = await Promise.all([
+          fetchMid(tokens[upIdx]),
+          fetchMid(tokens[downIdx]),
+        ]);
+        state.upPrice = up;
+        state.downPrice = down;
+      }
+    }
+
+    state.analysis = analyze(candles, price, state.openPrice);
+    state.loading = false;
+    setStatus('live');
+  } catch(e) {
+    state.error = e.message;
+    state.loading = false;
+    setStatus('error');
+  }
+
+  render();
+}
+
+// ══════════════════════════════════════════════
+// TIMER (update detik, render penuh tiap 5m)
+// ══════════════════════════════════════════════
+function startTimer() {
+  setInterval(() => {
+    const w = getWindow();
+    state.secLeft = w.secLeft;
+
+    // Render ulang tiap 5 menit (awal window baru)
+    if (w.start !== state.windowStart) {
+      state.windowStart = w.start;
+      fetchAll();
+    } else {
+      // Update timer aja
+      updateTimer();
+    }
+  }, 1000);
+}
+
+function updateTimer() {
+  const s = state.secLeft;
+  const el = document.getElementById('timerVal');
+  const fill = document.getElementById('progressFill');
+  if (!el || !fill) return;
+
+  const mins = Math.floor(s/60);
+  const secs = s%60;
+  el.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+  el.className = 'timer-val ' + (s<=30?'urgent':s<=60?'warning':'safe');
+  fill.style.width = `${(300-s)/300*100}%`;
+}
+
+function setStatus(st) {
+  const dot = document.getElementById('statusDot');
+  if (!dot) return;
+  dot.className = 'status-dot' + (st==='live'?' live':st==='error'?' error':'');
+}
+
+// ══════════════════════════════════════════════
+// RENDER
+// ══════════════════════════════════════════════
+function render() {
+  document.getElementById('loadingView').style.display = 'none';
+  const main = document.getElementById('mainView');
+  main.style.display = 'block';
+
+  if (state.error && !state.btcPrice) {
+    main.innerHTML = `
+      <div class="error-box fade-in">
+        <div class="error-icon">⚠️</div>
+        <div class="error-msg">Gagal mengambil data.<br>Cek koneksi internet, lalu tap Refresh.</div>
+        <button class="refresh-btn" onclick="manualRefresh()" style="margin:0;width:100%">🔄 COBA LAGI</button>
+      </div>`;
+    return;
+  }
+
+  const { btcPrice, openPrice, analysis, upPrice, downPrice,
+          marketSlug, lastUpdate, secLeft } = state;
+
+  // Harga & selisih
+  const diffAbs = btcPrice && openPrice ? btcPrice-openPrice : 0;
+  const diffPct = openPrice ? diffAbs/openPrice*100 : 0;
+  const diffUp = diffAbs >= 0;
+
+  // Sinyal
+  let sigClass='wait-signal', sigBadgeClass='wait', sigLabel='TUNGGU',
+      sigDir='TUNGGU', sigDirClass='wait', confClass='wait';
+
+  if (analysis) {
+    if (analysis.confidence >= MIN_CONFIDENCE) {
+      if (analysis.score > 0) {
+        sigClass='up-signal'; sigBadgeClass='up'; sigLabel='BELI UP';
+        sigDir='⬆ UP'; sigDirClass='up'; confClass='up';
+      } else {
+        sigClass='down-signal'; sigBadgeClass='down'; sigLabel='BELI DOWN';
+        sigDir='⬇ DOWN'; sigDirClass='down'; confClass='down';
+      }
+    }
+  }
+
+  const conf = analysis ? analysis.confidence : 0;
+  const rsi = analysis ? analysis.rsi : 0;
+  const emaTrend = analysis ? (analysis.ema5>analysis.ema13?'bull':'bear') : 'neut';
+  const emaLabel = emaTrend==='bull'?'📈 Bullish':'📉 Bearish';
+  const rsiClass = rsi>70?'bear':(rsi<30?'bull':(rsi>55?'bull':(rsi<45?'bear':'neut')));
+  const rsiLabel = rsi>70?'Overbought':(rsi<30?'Oversold':(rsi>55?'Bullish':'Bearish'));
+
+  const timeStr = lastUpdate ? lastUpdate.toLocaleTimeString('id-ID') : '-';
+
+  // Payout
+  let payoutHtml = '';
+  if (analysis && analysis.confidence >= MIN_CONFIDENCE) {
+    if (analysis.score > 0 && upPrice) {
+      const payout = ((1/upPrice-1)*100).toFixed(0);
+      payoutHtml = `<div class="payout-text">Modal $1 → menang dapat <span>$${(1/upPrice).toFixed(2)}</span> (+${payout}%)</div>`;
+    } else if (analysis.score <= 0 && downPrice) {
+      const payout = ((1/downPrice-1)*100).toFixed(0);
+      payoutHtml = `<div class="payout-text">Modal $1 → menang dapat <span>$${(1/downPrice).toFixed(2)}</span> (+${payout}%)</div>`;
+    }
+  }
+
+  const mins = Math.floor(secLeft/60);
+  const secs = secLeft%60;
+  const timerClass = secLeft<=30?'urgent':secLeft<=60?'warning':'safe';
+  const progressPct = (300-secLeft)/300*100;
+
+  main.innerHTML = `
+    <!-- HARGA BTC -->
+    <div class="price-card fade-in">
+      <div class="price-label">BTC / USD  LIVE</div>
+      <div class="price-value"><span>$</span>${btcPrice ? btcPrice.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) : '---'}</div>
+      <div class="price-meta">
+        <div class="price-meta-item">
+          <div class="price-meta-label">Open 5m</div>
+          <div class="price-meta-val">$${openPrice ? openPrice.toLocaleString('en-US',{minimumFractionDigits:2}) : '---'}</div>
+        </div>
+        <div class="price-meta-item">
+          <div class="price-meta-label">Selisih</div>
+          <div class="price-meta-val ${diffUp?'up':'down'}">${diffUp?'▲':'▼'} ${Math.abs(diffPct).toFixed(3)}%</div>
+        </div>
+        <div class="price-meta-item">
+          <div class="price-meta-label">RSI 14</div>
+          <div class="price-meta-val">${rsi.toFixed(0)}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIMER -->
+    <div class="timer-card fade-in">
+      <div class="timer-row">
+        <div class="timer-label">⏱ Sisa Waktu Window</div>
+        <div class="timer-val ${timerClass}" id="timerVal">${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}</div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width:${progressPct}%"></div>
+      </div>
+    </div>
+
+    <!-- SINYAL UTAMA -->
+    <div class="signal-card ${sigClass} fade-in">
+      <div class="signal-badge ${sigBadgeClass}">
+        <span>SINYAL</span>
+        <strong>${sigLabel}</strong>
+      </div>
+      <div class="signal-direction ${sigDirClass}">${sigDir}</div>
+      <div class="signal-sub">
+        ${analysis ? (analysis.confidence>=MIN_CONFIDENCE ? 'Kekuatan sinyal cukup untuk eksekusi' : `Kekuatan kurang (${conf.toFixed(0)}% < ${MIN_CONFIDENCE}%)`) : 'Mengumpulkan data analisa...'}
+      </div>
+      <div class="conf-row">
+        <div class="conf-label">Kekuatan Sinyal</div>
+        <div class="conf-pct" style="color:var(--${confClass})">${conf.toFixed(0)}%</div>
+      </div>
+      <div class="conf-track">
+        <div class="conf-fill ${confClass}" style="width:${conf}%"></div>
+      </div>
+    </div>
+
+    <!-- HARGA POLYMARKET -->
+    <div class="market-card fade-in">
+      <div class="section-title">💱 Harga Token Polymarket</div>
+      <div class="price-row">
+        <div class="price-box up-box">
+          <div class="price-box-label up">⬆ UP</div>
+          <div class="price-box-val">${upPrice ? '$'+upPrice.toFixed(3) : '-'}</div>
+          <div class="price-box-prob">${upPrice ? (upPrice*100).toFixed(1)+'% prob' : '---'}</div>
+        </div>
+        <div class="price-box down-box">
+          <div class="price-box-label down">⬇ DOWN</div>
+          <div class="price-box-val">${downPrice ? '$'+downPrice.toFixed(3) : '-'}</div>
+          <div class="price-box-prob">${downPrice ? (downPrice*100).toFixed(1)+'% prob' : '---'}</div>
+        </div>
+      </div>
+      ${payoutHtml}
+    </div>
+
+    <!-- INDIKATOR -->
+    <div class="indicators-card fade-in">
+      <div class="section-title">📊 Indikator Teknikal</div>
+      <div class="ind-grid">
+        <div class="ind-item">
+          <div class="ind-name">RSI 14</div>
+          <div class="ind-val ${rsiClass}">${rsi.toFixed(1)}</div>
+          <div class="ind-desc">${rsiLabel}</div>
+        </div>
+        <div class="ind-item">
+          <div class="ind-name">EMA 5/13</div>
+          <div class="ind-val ${emaTrend}">${emaLabel}</div>
+          <div class="ind-desc">Tren jangka pendek</div>
+        </div>
+        <div class="ind-item">
+          <div class="ind-name">Vs Open</div>
+          <div class="ind-val ${diffUp?'bull':'bear'}">${diffPct>=0?'+':''}${diffPct.toFixed(3)}%</div>
+          <div class="ind-desc">Posisi vs open window</div>
+        </div>
+        <div class="ind-item">
+          <div class="ind-name">Skor Total</div>
+          <div class="ind-val ${analysis&&analysis.score>0?'bull':analysis&&analysis.score<0?'bear':'neut'}">${analysis?analysis.score.toFixed(0):0}</div>
+          <div class="ind-desc">-100 bearish / +100 bullish</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LINK POLYMARKET -->
+    ${marketSlug ? `
+    <a class="link-card fade-in" href="https://polymarket.com/market/${marketSlug}" target="_blank">
+      <div class="link-text">
+        <small>BUKA DI POLYMARKET</small>
+        polymarket.com/market/...
+      </div>
+      <span style="font-size:20px">↗</span>
+    </a>` : `
+    <a class="link-card fade-in" href="https://polymarket.com/crypto/5M" target="_blank">
+      <div class="link-text">
+        <small>MARKET 5-MIN BTC</small>
+        polymarket.com/crypto/5M
+      </div>
+      <span style="font-size:20px">↗</span>
+    </a>`}
+
+    <!-- REFRESH MANUAL -->
+    <button class="refresh-btn" id="refreshBtn" onclick="manualRefresh()">
+      🔄 REFRESH MANUAL
+    </button>
+
+    <div class="last-update">Update terakhir: ${timeStr} • Auto-refresh tiap 5 menit</div>
+  `;
+}
+
+// ══════════════════════════════════════════════
+// REFRESH MANUAL
+// ══════════════════════════════════════════════
+async function manualRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Mengambil data...'; }
+  await fetchAll();
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+fetchAll();
+startTimer();
+
+// Auto-refresh tiap 5 menit (backup)
+setInterval(fetchAll, REFRESH_MS);
+</script>
+</body>
+</html>
