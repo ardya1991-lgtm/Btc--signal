@@ -210,22 +210,7 @@
 <script>
 // ========== PWA & Service Worker ==========
 if ('serviceWorker' in navigator) {
-    const swCode = `
-        const CACHE_NAME = 'btc-signal-v1';
-        self.addEventListener('fetch', e => {
-            e.respondWith(
-                caches.match(e.request).then(cached =>
-                    cached || fetch(e.request).then(r => { 
-                        if(r.ok && e.request.url.includes('api.binance.com')) {
-                            const clone = r.clone();
-                            caches.open(CACHE_NAME).then(c => c.put(e.request, clone));
-                        }
-                        return r;
-                    }).catch(() => cached)
-                )
-            );
-        });
-    `;
+    const swCode = `const CACHE_NAME='btc-signal-v2';self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request).then(r=>{if(r.ok){let a=r.clone();caches.open(CACHE_NAME).then(c=>c.put(e.request,a))}return r}).catch(()=>c)))});`;
     navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode],{type:'application/javascript'})));
 }
 
@@ -234,17 +219,15 @@ let audioEnabled = false;
 function toggleAudio() {
     audioEnabled = !audioEnabled;
     document.getElementById('audioStatus').textContent = audioEnabled ? 'On' : 'Off';
-    // Request notification permission if not granted
     if (audioEnabled && Notification.permission !== 'granted') {
         Notification.requestPermission();
     }
 }
 
 function notifySignal(signal) {
+    // Audio & getar hanya jika diaktifkan
     if (!audioEnabled) return;
-    // Vibrate (Android)
     if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-    // Audio beep sederhana dengan Web Audio API
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
@@ -256,7 +239,6 @@ function notifySignal(signal) {
         osc.start();
         osc.stop(ctx.currentTime + 0.2);
     } catch(e) {}
-    // Web Notification
     if (Notification.permission === 'granted') {
         new Notification(`Sinyal BTC 5m: ${signal}`, {
             body: `Sinyal ${signal} terdeteksi pada ${new Date().toLocaleTimeString()}`,
@@ -284,7 +266,7 @@ function renderLog() {
     ).join('') || '<div style="color:var(--text2);">Tidak ada sinyal</div>';
 }
 
-// Fetch klines
+// ========== Fetch & WebSocket ==========
 async function fetchKlines(limit = 200) {
     try {
         const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=${limit}`);
@@ -302,7 +284,6 @@ async function fetchKlines(limit = 200) {
     } catch(e) { return null; }
 }
 
-// WebSocket realtime
 let ws = null;
 function connectWS() {
     if(ws) ws.close();
@@ -314,7 +295,7 @@ function connectWS() {
     ws.onclose = () => setTimeout(connectWS, 3000);
 }
 
-// ========== Technical Indicators ==========
+// ========== Technical Indicators (Fixed) ==========
 function SMA(data, p) {
     let out = new Array(data.length).fill(null);
     for(let i=p-1;i<data.length;i++) {
@@ -372,8 +353,11 @@ function Bollinger(closes, p=20, mult=2) {
         upper.push(mean+mult*std);
         lower.push(mean-mult*std);
     }
-    let lastUp=upper[upper.length-1], lastLow=lower[lower.length-1], lastSma=sma[sma.length-1];
-    return {upper:lastUp, lower:lastLow, sma:lastSma};
+    return {
+        upper: upper[upper.length-1] || null,
+        lower: lower[lower.length-1] || null,
+        sma: sma[sma.length-1] || null
+    };
 }
 
 function analyze() {
@@ -391,22 +375,19 @@ function analyze() {
     let change = lastClose - prevClose;
     let changePct = (change/prevClose)*100;
     
-    // Momentum 3 candle
-    let mom3 = closes.slice(-4).reduce((sum,v,i,a)=>i>0?sum+(v-a[i-1]):0,0);
-    let mom5 = closes.slice(-6).reduce((sum,v,i,a)=>i>0?sum+(v-a[i-1]):0,0);
+    let mom3 = closes.slice(-4).reduce((s,v,i,a)=>i>0?s+(v-a[i-1]):0,0);
+    let mom5 = closes.slice(-6).reduce((s,v,i,a)=>i>0?s+(v-a[i-1]):0,0);
     
-    // Volume momentum
     let volAvg5 = volumes.slice(-5).reduce((a,b)=>a+b,0)/5;
     let volAvg10 = volumes.slice(-10,-5).reduce((a,b)=>a+b,0)/5;
-    let volSignal = volAvg5>volAvg10*1.3?'bullish':volAvg5<volAvg10*0.7?'bearish':'neutral';
+    let volSig = volAvg5>volAvg10*1.3?'bullish':volAvg5<volAvg10*0.7?'bearish':'neutral';
     
-    // Scoring system
     let bullish=0, bearish=0, total=0;
-    const add = (signal, weight) => {
-        total+=weight;
-        if(signal==='bullish') bullish+=weight;
-        else if(signal==='bearish') bearish+=weight;
-        else { bullish+=weight*0.5; bearish+=weight*0.5; }
+    const add = (sig, w) => {
+        total+=w;
+        if(sig==='bullish') bullish+=w;
+        else if(sig==='bearish') bearish+=w;
+        else { bullish+=w*0.5; bearish+=w*0.5; }
     };
     add(rsi.sig, 1.5);
     add(macd.sig, 1.5);
@@ -414,7 +395,7 @@ function analyze() {
     add(lastClose>bb.upper?'bearish':lastClose<bb.lower?'bullish':'neutral', 1.0);
     add(mom3>0?'bullish':mom3<0?'bearish':'neutral', 1.0);
     add(mom5>0?'bullish':mom5<0?'bearish':'neutral', 0.8);
-    add(volSignal, 0.7);
+    add(volSig, 0.7);
     
     let bullPct = (bullish/total)*100;
     let bearPct = (bearish/total)*100;
@@ -427,30 +408,32 @@ function analyze() {
     else if(bearPct>=60) signal = 'SELL 🟥';
     else signal = 'NEUTRAL ⬜';
     
-    conf = Math.max(bullPct, bearPct);
+    conf = Math.round(Math.max(bullPct, bearPct));
     if(signal.includes('NEUTRAL')) conf = 50;
     
-    // Alasan
     let reasons = [];
     if(rsi.val && rsi.val>70) reasons.push('RSI Overbought');
     if(rsi.val && rsi.val<30) reasons.push('RSI Oversold');
-    if(macd.hist>0) reasons.push('MACD bullish');
-    else reasons.push('MACD bearish');
+    if(macd.hist && macd.hist>0) reasons.push('MACD bullish');
+    else if(macd.hist) reasons.push('MACD bearish');
     if(lastClose<bb.lower) reasons.push('Harga di bawah BB lower');
     if(lastClose>bb.upper) reasons.push('Harga di atas BB upper');
-    if(volSignal==='bullish') reasons.push('Volume naik');
+    if(volSig==='bullish') reasons.push('Volume naik');
+    if(reasons.length===0) reasons.push('Sinyal campuran');
     
     return {
-        signal, confidence: Math.round(conf), bullPct: Math.round(bullPct), bearPct: Math.round(bearPct),
-        changePct, lastClose, rsi: rsi.val, macdHist: macd.hist, bbUpper: bb.upper, bbLower: bb.lower,
-        sma20: sma20[sma20.length-1], sma50: sma50[sma50.length-1], reasons: reasons.join(', ')
+        signal, confidence: conf, bullPct: Math.round(bullPct), bearPct: Math.round(bearPct),
+        changePct, lastClose,
+        rsi: rsi.val, macdHist: macd.hist, bbUpper: bb.upper, bbLower: bb.lower,
+        sma20: sma20[sma20.length-1], sma50: sma50[sma50.length-1],
+        reasons: reasons.join(', ')
     };
 }
 
-// ========== Mini Chart (Canvas) ==========
+// ========== Mini Chart ==========
 function drawMiniChart() {
     const canvas = document.getElementById('miniChart');
-    if(!canvas || candles.length<10) return;
+    if(!canvas || candles.length<5) return;
     const ctx = canvas.getContext('2d');
     const w = canvas.width, h = canvas.height;
     const closes = candles.slice(-50).map(c=>c.close);
@@ -458,15 +441,12 @@ function drawMiniChart() {
     const max = Math.max(...closes)*1.001;
     const range = max-min;
     ctx.clearRect(0,0,w,h);
-    
-    // grid
     ctx.strokeStyle = '#334155';
     ctx.lineWidth = 0.5;
     for(let i=0;i<5;i++) {
         let y = 20 + (h-40)*(i/4);
         ctx.beginPath(); ctx.moveTo(30,y); ctx.lineTo(w-10,y); ctx.stroke();
     }
-    // price line
     ctx.beginPath();
     ctx.strokeStyle = '#f7931a';
     ctx.lineWidth = 2;
@@ -477,33 +457,30 @@ function drawMiniChart() {
         else ctx.lineTo(x,y);
     }
     ctx.stroke();
-    
-    // current price dot
     let lastX = 30 + (w-40);
     let lastY = 20 + (h-40)*(1-(closes[closes.length-1]-min)/range);
     ctx.fillStyle = '#f7931a';
     ctx.beginPath(); ctx.arc(lastX, lastY, 4, 0, 2*Math.PI); ctx.fill();
-    
-    // labels
     ctx.fillStyle = '#94a3b8';
     ctx.font = '10px JetBrains Mono';
     ctx.fillText('$'+max.toFixed(0), 32, 16);
     ctx.fillText('$'+min.toFixed(0), 32, h-5);
 }
 
-// ========== Update UI ==========
+// ========== UI Update (FIXED) ==========
 function updateUI() {
     if(!candles.length) return;
-    
+
     const analysis = analyze();
     if(!analysis) return;
-    
+
+    // Harga
     document.getElementById('priceDisplay').textContent = '$' + (currentPrice||analysis.lastClose).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
     const chg = document.getElementById('changeDisplay');
     chg.textContent = (analysis.changePct>=0?'▲':'▼')+' '+Math.abs(analysis.changePct).toFixed(2)+'%';
     chg.className = 'change '+(analysis.changePct>=0?'up':'down');
     document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
-    
+
     // Sinyal
     const sigText = document.getElementById('signalText');
     const prevSignal = sigText.textContent;
@@ -513,51 +490,54 @@ function updateUI() {
     document.getElementById('confFill').style.width = analysis.confidence+'%';
     document.getElementById('confFill').style.background = analysis.signal.includes('BUY')?'var(--green)':analysis.signal.includes('SELL')?'var(--red)':'var(--gold)';
     document.getElementById('reasonText').textContent = analysis.reasons;
-    
-    // Jika sinyal berubah (dari bukan NEUTRAL ke BUY/SELL)
-    if(prevSignal !== analysis.signal && !analysis.signal.includes('NEUTRAL') && audioEnabled) {
-        notifySignal(analysis.signal);
-        addLog({signal: analysis.signal, confidence: analysis.confidence});
+
+    // === PERBAIKAN LOG: selalu catat jika sinyal berubah ke BUY/SELL (tidak perlu audio) ===
+    if (prevSignal !== analysis.signal && !analysis.signal.includes('NEUTRAL')) {
+        addLog({ signal: analysis.signal, confidence: analysis.confidence });
+        // Notifikasi suara/getar hanya jika audio diaktifkan
+        if (audioEnabled) notifySignal(analysis.signal);
     }
-    
-    // Indikator grid
+
+    // Grid Indikator (FIX)
     const grid = document.getElementById('indicatorsGrid');
-    grid.innerHTML = [
-        {name:'RSI', val:analysis.rsi?.toFixed(2)||'--', sig:analysis.rsi>70?'bearish':analysis.rsi<30?'bullish':'neutral'},
-        {name:'MACD Hist', val:analysis.macdHist?.toFixed(2)||'--', sig:analysis.macdHist>0?'bullish':'bearish'},
-        {name:'SMA 20', val:analysis.sma20?.toFixed(2)||'--', sig:'neutral'},
-        {name:'SMA 50', val:analysis.sma50?.toFixed(2)||'--', sig:'neutral'},
-        {name:'BB Upper', val:analysis.bbUpper?.toFixed(2)||'--', sig:'neutral'},
-        {name:'BB Lower', val:analysis.bbLower?.toFixed(2)||'--', sig:'neutral'}
-    ].map(i=>`
+    const items = [
+        { name: 'RSI (14)', val: analysis.rsi?.toFixed(2) || '--', sig: analysis.rsi > 70 ? 'bearish' : analysis.rsi < 30 ? 'bullish' : 'neutral' },
+        { name: 'MACD Hist', val: analysis.macdHist?.toFixed(2) || '--', sig: analysis.macdHist > 0 ? 'bullish' : 'bearish' },
+        { name: 'SMA 20', val: analysis.sma20?.toFixed(2) || '--', sig: 'neutral' },
+        { name: 'SMA 50', val: analysis.sma50?.toFixed(2) || '--', sig: 'neutral' },
+        { name: 'BB Upper', val: analysis.bbUpper?.toFixed(2) || '--', sig: 'neutral' },
+        { name: 'BB Lower', val: analysis.bbLower?.toFixed(2) || '--', sig: 'neutral' }
+    ];
+    grid.innerHTML = items.map(item => `
         <div class="ind-card">
-            <div class="ind-name">${i.name}</div>
-            <div class="ind-val">${i.val}</div>
-            <span class="badge ${i.sig==='bullish'?'bull':i.sig==='bearish'?'bear':'neutral'}">${i.sig}</span>
+            <div class="ind-name">${item.name}</div>
+            <div class="ind-val">${item.val}</div>
+            <span class="badge ${item.sig === 'bullish' ? 'bull' : item.sig === 'bearish' ? 'bear' : 'neutral'}">${item.sig}</span>
         </div>
     `).join('');
-    
+
     drawMiniChart();
 }
 
 // ========== Init ==========
 function closeDisclaimer() {
     document.getElementById('disclaimerModal').style.display='none';
-    localStorage.setItem('btcbot_disclaimer','accepted');
+    localStorage.setItem('btcbot_disclaimer_accepted_v2','1');
 }
 
-(async function init(){
-    if(localStorage.getItem('btcbot_disclaimer')!=='accepted') {
-        document.getElementById('disclaimerModal').style.display='flex';
+window.onload = () => {
+    if (!localStorage.getItem('btcbot_disclaimer_accepted_v2')) {
+        document.getElementById('disclaimerModal').style.display = 'flex';
     }
-    await fetchKlines();
-    connectWS();
-    updateUI();
-    setInterval(async ()=>{
+    fetchKlines().then(() => {
+        updateUI();
+        connectWS();
+    });
+    setInterval(async () => {
         await fetchKlines();
         updateUI();
     }, 30000);
-})();
+};
 </script>
 </body>
 </html>
