@@ -1,537 +1,1324 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f172a">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>BTC 5m Up/Down Predictor</title>
-    <style>
-        :root {
-            --bg: #0f172a;
-            --card: #1e293b;
-            --green: #10b981;
-            --red: #ef4444;
-            --text: #e2e8f0;
-            --text2: #94a3b8;
-            --border: #334155;
-            --gold: #f59e0b;
-        }
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body {
-            font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
-            background:var(--bg);
-            color:var(--text);
-            padding:16px;
-            min-height:100vh;
-            display:flex;
-            flex-direction:column;
-            gap:16px;
-        }
-        .header {
-            display:flex;
-            align-items:center;
-            gap:12px;
-            background:var(--card);
-            padding:16px;
-            border-radius:16px;
-            border:1px solid var(--border);
-        }
-        .logo {
-            width:48px;
-            height:48px;
-            border-radius:12px;
-            background:linear-gradient(135deg, #f7931a, #ff6b35);
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            font-size:28px;
-        }
-        .price-block {
-            background:var(--card);
-            border-radius:16px;
-            padding:16px;
-            border:1px solid var(--border);
-            display:flex;
-            flex-wrap:wrap;
-            align-items:center;
-            gap:16px;
-        }
-        .price {
-            font-size:2rem;
-            font-weight:800;
-            font-family:'JetBrains Mono',monospace;
-        }
-        .change {
-            font-size:0.9rem;
-            font-weight:600;
-            padding:4px 12px;
-            border-radius:8px;
-        }
-        .up { background:rgba(16,185,129,0.2); color:var(--green); }
-        .down { background:rgba(239,68,68,0.2); color:var(--red); }
-        .prediction-box {
-            background:var(--card);
-            border-radius:16px;
-            padding:24px;
-            text-align:center;
-            border:2px solid var(--border);
-        }
-        .prediction-title { font-size:0.85rem; color:var(--text2); margin-bottom:8px; }
-        .prediction-value {
-            font-size:2.8rem;
-            font-weight:900;
-            letter-spacing:-0.02em;
-        }
-        .prob-row {
-            display:flex;
-            justify-content:center;
-            gap:24px;
-            margin-top:12px;
-            font-size:1.2rem;
-            font-weight:600;
-        }
-        .prob-up { color:var(--green); }
-        .prob-down { color:var(--red); }
-        .conf-bar {
-            height:10px;
-            border-radius:5px;
-            background:#334155;
-            margin-top:12px;
-            overflow:hidden;
-            display:flex;
-        }
-        .fill-up { height:100%; background:var(--green); }
-        .fill-down { height:100%; background:var(--red); }
-        .mini-chart {
-            width:100%;
-            height:200px;
-            background:var(--card);
-            border-radius:12px;
-            border:1px solid var(--border);
-            display:block;
-        }
-        .grid {
-            display:grid;
-            grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-            gap:12px;
-        }
-        .ind-card {
-            background:var(--card);
-            padding:14px;
-            border-radius:12px;
-            border:1px solid var(--border);
-            text-align:center;
-        }
-        .ind-name { font-size:0.7rem; color:var(--text2); text-transform:uppercase; }
-        .ind-val { font-size:1.3rem; font-weight:700; font-family:'JetBrains Mono',monospace; }
-        .badge {
-            display:inline-block;
-            font-size:0.7rem;
-            font-weight:600;
-            padding:2px 8px;
-            border-radius:6px;
-            margin-top:4px;
-        }
-        .badge.bull { background:rgba(16,185,129,0.2); color:var(--green); }
-        .badge.bear { background:rgba(239,68,68,0.2); color:var(--red); }
-        .badge.neutral { background:rgba(245,158,11,0.2); color:var(--gold); }
-        .log-container {
-            max-height:200px;
-            overflow-y:auto;
-            background:var(--card);
-            border-radius:12px;
-            padding:12px;
-            border:1px solid var(--border);
-            font-size:0.75rem;
-            font-family:'JetBrains Mono',monospace;
-        }
-        .log-item { padding:6px 0; border-bottom:1px solid var(--border); }
-        .btn {
-            padding:8px 16px;
-            border-radius:8px;
-            border:1px solid var(--border);
-            background:var(--card);
-            color:var(--text);
-            font-size:0.8rem;
-            cursor:pointer;
-        }
-    </style>
-</head>
-<body>
+import { useState, useEffect, useRef, useCallback } from "react";
 
-<div class="header">
-    <div class="logo">₿</div>
-    <div><h1 style="font-size:1.2rem;">BTC 5m Up/Down</h1><span style="font-size:0.7rem;color:var(--text2);">Real‑time dari WebSocket</span></div>
-    <button class="btn" onclick="toggleAudio()" style="margin-left:auto;">🔔 <span id="audioStatus">Off</span></button>
-</div>
+// ============================================================
+// BINANCE TRADING BOT — Momentum & Global Market Analysis
+// Real Trading | Android-Ready | Auto Execute Orders
+// ============================================================
 
-<div class="price-block">
-    <div>
-        <div style="font-size:0.7rem;color:var(--text2);">BTC/USDT</div>
-        <div class="price" id="priceDisplay">--</div>
-    </div>
-    <div class="change" id="changeDisplay">--</div>
-    <div style="margin-left:auto;font-size:0.75rem;color:var(--text2);" id="updateTime">--</div>
-</div>
+const INTERVALS = ["1m", "3m", "5m", "15m", "1h", "4h"];
+const PAIRS = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "AVAXUSDT"];
 
-<canvas class="mini-chart" id="miniChart" width="400" height="200"></canvas>
+// ── Utility ──────────────────────────────────────────────────
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fmt = (n, d = 2) => Number(n).toFixed(d);
+const fmtUSD = (n) => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const ts = () => new Date().toLocaleTimeString("id-ID");
 
-<div class="prediction-box" id="predictionBox">
-    <div class="prediction-title">⏳ Prediksi 5 Menit ke Depan</div>
-    <div class="prediction-value" id="predictionText">Mengumpulkan candle...</div>
-    <div class="prob-row">
-        <span class="prob-up" id="probUp">UP: --%</span>
-        <span class="prob-down" id="probDown">DOWN: --%</span>
-    </div>
-    <div class="conf-bar">
-        <div class="fill-up" id="fillUp" style="width:50%;"></div>
-        <div class="fill-down" id="fillDown" style="width:50%;"></div>
-    </div>
-    <div style="font-size:0.7rem;color:var(--text2);margin-top:10px;" id="reasonText"></div>
-</div>
+// ── Binance REST API ──────────────────────────────────────────
+class BinanceAPI {
+  constructor(apiKey, secretKey, testnet = false) {
+    this.apiKey = apiKey;
+    this.secretKey = secretKey;
+    this.base = testnet
+      ? "https://testnet.binance.vision/api"
+      : "https://api.binance.com/api";
+  }
 
-<div class="grid" id="indicatorsGrid">
-    <div class="ind-card"><div class="ind-name">RSI</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
-    <div class="ind-card"><div class="ind-name">MACD Hist</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
-    <div class="ind-card"><div class="ind-name">SMA 20</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
-    <div class="ind-card"><div class="ind-name">SMA 50</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
-    <div class="ind-card"><div class="ind-name">BB Upper</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
-    <div class="ind-card"><div class="ind-name">BB Lower</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
-</div>
+  async sign(params) {
+    const query = new URLSearchParams(params).toString();
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(this.secretKey);
+    const msgData = encoder.encode(query);
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+    );
+    const sig = await crypto.subtle.sign("HMAC", cryptoKey, msgData);
+    const hex = Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    return query + "&signature=" + hex;
+  }
 
-<div style="font-size:0.8rem;color:var(--text2);">📋 Log Prediksi</div>
-<div class="log-container" id="logContainer"><div style="color:var(--text2);">Menunggu sinyal...</div></div>
+  async publicGet(path, params = {}) {
+    const q = new URLSearchParams(params).toString();
+    const r = await fetch(`${this.base}${path}${q ? "?" + q : ""}`);
+    if (!r.ok) throw new Error(`Binance ${r.status}: ${await r.text()}`);
+    return r.json();
+  }
 
-<script>
-// ========== PWA ==========
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register(URL.createObjectURL(new Blob([
-        `self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)))})`
-    ],{type:'application/javascript'})));
+  async privateGet(path, params = {}) {
+    params.timestamp = Date.now();
+    params.recvWindow = 5000;
+    const signed = await this.sign(params);
+    const r = await fetch(`${this.base}${path}?${signed}`, {
+      headers: { "X-MBX-APIKEY": this.apiKey },
+    });
+    if (!r.ok) throw new Error(`Binance ${r.status}: ${await r.text()}`);
+    return r.json();
+  }
+
+  async privatePost(path, params = {}) {
+    params.timestamp = Date.now();
+    params.recvWindow = 5000;
+    const signed = await this.sign(params);
+    const r = await fetch(`${this.base}${path}`, {
+      method: "POST",
+      headers: {
+        "X-MBX-APIKEY": this.apiKey,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: signed,
+    });
+    if (!r.ok) throw new Error(`Binance ${r.status}: ${await r.text()}`);
+    return r.json();
+  }
+
+  // Public
+  async getKlines(symbol, interval, limit = 100) {
+    return this.publicGet("/v3/klines", { symbol, interval, limit });
+  }
+  async getTicker(symbol) {
+    return this.publicGet("/v3/ticker/24hr", { symbol });
+  }
+  async getAllTickers() {
+    return this.publicGet("/v3/ticker/24hr");
+  }
+  async getOrderBook(symbol, limit = 20) {
+    return this.publicGet("/v3/depth", { symbol, limit });
+  }
+
+  // Private
+  async getAccount() {
+    return this.privateGet("/v3/account");
+  }
+  async getOpenOrders(symbol) {
+    return this.privateGet("/v3/openOrders", symbol ? { symbol } : {});
+  }
+  async placeOrder(symbol, side, type, quantity, price = null, stopPrice = null) {
+    const p = { symbol, side, type, quantity };
+    if (type === "LIMIT") {
+      p.timeInForce = "GTC";
+      p.price = price;
+    }
+    if (type === "STOP_LOSS_LIMIT" || type === "TAKE_PROFIT_LIMIT") {
+      p.timeInForce = "GTC";
+      p.price = price;
+      p.stopPrice = stopPrice;
+    }
+    return this.privatePost("/v3/order", p);
+  }
+  async cancelOrder(symbol, orderId) {
+    return this.privateGet("/v3/order/cancel", { symbol, orderId }); // simplified
+  }
 }
 
-// ========== Audio & Notifikasi ==========
-let audioOn = false;
-function toggleAudio() {
-    audioOn = !audioOn;
-    document.getElementById('audioStatus').textContent = audioOn ? 'On' : 'Off';
-    if (audioOn && Notification.permission !== 'granted') Notification.requestPermission();
+// ── Technical Indicators ──────────────────────────────────────
+class Indicators {
+  static closes(klines) {
+    return klines.map((k) => parseFloat(k[4]));
+  }
+  static highs(klines) { return klines.map((k) => parseFloat(k[2])); }
+  static lows(klines)  { return klines.map((k) => parseFloat(k[3])); }
+  static volumes(klines) { return klines.map((k) => parseFloat(k[5])); }
+
+  static sma(data, period) {
+    const result = [];
+    for (let i = period - 1; i < data.length; i++) {
+      const slice = data.slice(i - period + 1, i + 1);
+      result.push(slice.reduce((a, b) => a + b, 0) / period);
+    }
+    return result;
+  }
+
+  static ema(data, period) {
+    const k = 2 / (period + 1);
+    const result = [data[0]];
+    for (let i = 1; i < data.length; i++) {
+      result.push(data[i] * k + result[i - 1] * (1 - k));
+    }
+    return result;
+  }
+
+  static rsi(closes, period = 14) {
+    const gains = [], losses = [];
+    for (let i = 1; i < closes.length; i++) {
+      const diff = closes[i] - closes[i - 1];
+      gains.push(diff > 0 ? diff : 0);
+      losses.push(diff < 0 ? -diff : 0);
+    }
+    if (gains.length < period) return null;
+    let avgGain = gains.slice(0, period).reduce((a, b) => a + b) / period;
+    let avgLoss = losses.slice(0, period).reduce((a, b) => a + b) / period;
+    for (let i = period; i < gains.length; i++) {
+      avgGain = (avgGain * (period - 1) + gains[i]) / period;
+      avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
+    }
+    if (avgLoss === 0) return 100;
+    const rs = avgGain / avgLoss;
+    return 100 - 100 / (1 + rs);
+  }
+
+  static macd(closes, fast = 12, slow = 26, signal = 9) {
+    const emaFast = this.ema(closes, fast);
+    const emaSlow = this.ema(closes, slow);
+    const len = Math.min(emaFast.length, emaSlow.length);
+    const macdLine = [];
+    for (let i = 0; i < len; i++) {
+      macdLine.push(emaFast[emaFast.length - len + i] - emaSlow[emaSlow.length - len + i]);
+    }
+    const signalLine = this.ema(macdLine, signal);
+    const histogram = macdLine.slice(-signalLine.length).map((v, i) => v - signalLine[i]);
+    return {
+      macd: macdLine[macdLine.length - 1],
+      signal: signalLine[signalLine.length - 1],
+      histogram: histogram[histogram.length - 1],
+    };
+  }
+
+  static bollinger(closes, period = 20, stdDev = 2) {
+    if (closes.length < period) return null;
+    const slice = closes.slice(-period);
+    const mean = slice.reduce((a, b) => a + b) / period;
+    const variance = slice.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / period;
+    const std = Math.sqrt(variance);
+    return { upper: mean + stdDev * std, middle: mean, lower: mean - stdDev * std, std };
+  }
+
+  static atr(klines, period = 14) {
+    if (klines.length < period + 1) return null;
+    const trs = [];
+    for (let i = 1; i < klines.length; i++) {
+      const high = parseFloat(klines[i][2]);
+      const low = parseFloat(klines[i][3]);
+      const prevClose = parseFloat(klines[i - 1][4]);
+      trs.push(Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose)));
+    }
+    return trs.slice(-period).reduce((a, b) => a + b) / period;
+  }
+
+  static stochastic(klines, kPeriod = 14, dPeriod = 3) {
+    if (klines.length < kPeriod) return null;
+    const kValues = [];
+    for (let i = kPeriod - 1; i < klines.length; i++) {
+      const slice = klines.slice(i - kPeriod + 1, i + 1);
+      const highest = Math.max(...slice.map((k) => parseFloat(k[2])));
+      const lowest = Math.min(...slice.map((k) => parseFloat(k[3])));
+      const close = parseFloat(klines[i][4]);
+      kValues.push(highest === lowest ? 0 : ((close - lowest) / (highest - lowest)) * 100);
+    }
+    const dValue = kValues.slice(-dPeriod).reduce((a, b) => a + b) / dPeriod;
+    return { k: kValues[kValues.length - 1], d: dValue };
+  }
+
+  static volumeMomentum(volumes, period = 20) {
+    if (volumes.length < period) return 1;
+    const avg = volumes.slice(-period - 1, -1).reduce((a, b) => a + b) / period;
+    return avg === 0 ? 1 : volumes[volumes.length - 1] / avg;
+  }
 }
-function notify(signal) {
-    if (!audioOn) return;
-    if (navigator.vibrate) navigator.vibrate([200,100,200]);
+
+// ── Momentum Signal Engine ────────────────────────────────────
+class MomentumEngine {
+  static analyze(klines, ticker) {
+    const closes = Indicators.closes(klines);
+    const volumes = Indicators.volumes(klines);
+    const price = closes[closes.length - 1];
+
+    const rsi = Indicators.rsi(closes);
+    const macd = Indicators.macd(closes);
+    const bb = Indicators.bollinger(closes);
+    const atr = Indicators.atr(klines);
+    const stoch = Indicators.stochastic(klines);
+    const volMom = Indicators.volumeMomentum(volumes);
+    const ema20 = Indicators.ema(closes, 20);
+    const ema50 = Indicators.ema(closes, 50);
+    const ema200 = Indicators.ema(closes, 200);
+
+    const priceChange24h = parseFloat(ticker?.priceChangePercent || 0);
+    const vol24h = parseFloat(ticker?.quoteVolume || 0);
+
+    let score = 0;
+    const signals = [];
+
+    // RSI Momentum
+    if (rsi !== null) {
+      if (rsi < 30) { score += 3; signals.push({ type: "RSI Oversold", value: fmt(rsi), bullish: true }); }
+      else if (rsi > 70) { score -= 3; signals.push({ type: "RSI Overbought", value: fmt(rsi), bullish: false }); }
+      else if (rsi > 50 && rsi < 65) { score += 1; signals.push({ type: "RSI Bullish Zone", value: fmt(rsi), bullish: true }); }
+      else if (rsi < 50 && rsi > 40) { score -= 1; signals.push({ type: "RSI Bearish Zone", value: fmt(rsi), bullish: false }); }
+    }
+
+    // MACD Momentum
+    if (macd) {
+      if (macd.macd > macd.signal && macd.histogram > 0) {
+        score += macd.histogram > 0 ? 2 : 1;
+        signals.push({ type: "MACD Bullish Cross", value: fmt(macd.histogram, 4), bullish: true });
+      } else if (macd.macd < macd.signal && macd.histogram < 0) {
+        score -= 2;
+        signals.push({ type: "MACD Bearish Cross", value: fmt(macd.histogram, 4), bullish: false });
+      }
+    }
+
+    // Bollinger Bands
+    if (bb) {
+      if (price < bb.lower) { score += 2; signals.push({ type: "BB Lower Band Bounce", value: fmt(price), bullish: true }); }
+      else if (price > bb.upper) { score -= 2; signals.push({ type: "BB Upper Band Rejection", value: fmt(price), bullish: false }); }
+      const bbWidth = (bb.upper - bb.lower) / bb.middle;
+      if (bbWidth < 0.03) signals.push({ type: "BB Squeeze (Breakout Soon)", value: fmt(bbWidth * 100) + "%", bullish: null });
+    }
+
+    // EMA Trend
+    const lastEma20 = ema20[ema20.length - 1];
+    const lastEma50 = ema50.length > 0 ? ema50[ema50.length - 1] : null;
+    const lastEma200 = ema200.length > 0 ? ema200[ema200.length - 1] : null;
+
+    if (lastEma20 && lastEma50) {
+      if (lastEma20 > lastEma50) { score += 1; signals.push({ type: "EMA20 > EMA50 (Uptrend)", value: fmt(lastEma20), bullish: true }); }
+      else { score -= 1; signals.push({ type: "EMA20 < EMA50 (Downtrend)", value: fmt(lastEma20), bullish: false }); }
+    }
+    if (lastEma200 && price > lastEma200) {
+      score += 1; signals.push({ type: "Price > EMA200 (Bull Market)", value: fmt(lastEma200), bullish: true });
+    } else if (lastEma200) {
+      score -= 1; signals.push({ type: "Price < EMA200 (Bear Market)", value: fmt(lastEma200), bullish: false });
+    }
+
+    // Stochastic
+    if (stoch) {
+      if (stoch.k < 20 && stoch.k > stoch.d) { score += 2; signals.push({ type: "Stoch Oversold Cross", value: fmt(stoch.k), bullish: true }); }
+      else if (stoch.k > 80 && stoch.k < stoch.d) { score -= 2; signals.push({ type: "Stoch Overbought Cross", value: fmt(stoch.k), bullish: false }); }
+    }
+
+    // Volume Confirmation
+    if (volMom > 1.5) {
+      const volSignal = score > 0 ? "High Volume Bullish Confirm" : "High Volume Bearish Confirm";
+      score += score > 0 ? 1 : -1;
+      signals.push({ type: volSignal, value: fmt(volMom, 2) + "x", bullish: score > 0 });
+    }
+
+    // 24h Momentum
+    if (Math.abs(priceChange24h) > 3) {
+      if (priceChange24h > 5) { score += 1; signals.push({ type: "Strong 24h Momentum", value: "+" + fmt(priceChange24h) + "%", bullish: true }); }
+      else if (priceChange24h < -5) { score -= 1; signals.push({ type: "Strong 24h Sell Pressure", value: fmt(priceChange24h) + "%", bullish: false }); }
+    }
+
+    const strength = Math.min(Math.abs(score) / 10 * 100, 100);
+    let action = "HOLD";
+    let confidence = "LOW";
+
+    if (score >= 5) { action = "BUY"; confidence = score >= 8 ? "HIGH" : "MEDIUM"; }
+    else if (score <= -5) { action = "SELL"; confidence = score <= -8 ? "HIGH" : "MEDIUM"; }
+    else if (score >= 3) { action = "WEAK_BUY"; confidence = "LOW"; }
+    else if (score <= -3) { action = "WEAK_SELL"; confidence = "LOW"; }
+
+    const stopLoss = atr ? (action.includes("BUY") ? price - atr * 2 : price + atr * 2) : null;
+    const takeProfit = atr ? (action.includes("BUY") ? price + atr * 3 : price - atr * 3) : null;
+
+    return {
+      score, action, confidence, strength, signals,
+      price, rsi, macd, bb, atr, stoch, volMom,
+      stopLoss, takeProfit, priceChange24h, vol24h,
+      ema20: lastEma20, ema50: lastEma50, ema200: lastEma200,
+    };
+  }
+}
+
+// ── Main App ──────────────────────────────────────────────────
+export default function TradingBot() {
+  const [screen, setScreen] = useState("setup"); // setup | dashboard | trading | logs | settings
+  const [apiKey, setApiKey] = useState("");
+  const [secretKey, setSecretKey] = useState("");
+  const [testnet, setTestnet] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [botRunning, setBotRunning] = useState(false);
+  const [selectedPair, setSelectedPair] = useState("BTCUSDT");
+  const [interval, setInterval_] = useState("15m");
+  const [tradeAmount, setTradeAmount] = useState("10"); // USDT
+  const [riskPercent, setRiskPercent] = useState("1");
+  const [autoTrade, setAutoTrade] = useState(false);
+  const [minConfidence, setMinConfidence] = useState("HIGH");
+  const [analysis, setAnalysis] = useState(null);
+  const [allAnalysis, setAllAnalysis] = useState({});
+  const [account, setAccount] = useState(null);
+  const [logs, setLogs] = useState([]);
+  const [orderHistory, setOrderHistory] = useState([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [marketOverview, setMarketOverview] = useState([]);
+  const [showConfirmOrder, setShowConfirmOrder] = useState(null);
+
+  const apiRef = useRef(null);
+  const intervalRef = useRef(null);
+  const logRef = useRef(null);
+
+  const addLog = useCallback((msg, type = "info") => {
+    const entry = { time: ts(), msg, type, id: Date.now() + Math.random() };
+    setLogs((prev) => [entry, ...prev].slice(0, 200));
+  }, []);
+
+  const connectAPI = async () => {
+    if (!apiKey.trim() || !secretKey.trim()) {
+      setError("Masukkan API Key dan Secret Key terlebih dahulu!");
+      return;
+    }
+    setLoading(true);
+    setError("");
     try {
-        const ctx = new (window.AudioContext||window.webkitAudioContext)();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.frequency.value = signal.includes('UP') ? 800 : 400;
-        gain.gain.value = 0.3;
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.2);
-    } catch(e) {}
-    if (Notification.permission === 'granted') {
-        new Notification(`Prediksi 5m: ${signal}`, {
-            body: `Probabilitas ${signal} pada ${new Date().toLocaleTimeString()}`,
-            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="6" fill="%23f7931a"/><text x="16" y="24" font-size="20" text-anchor="middle" fill="white">₿</text></svg>'
-        });
+      const api = new BinanceAPI(apiKey.trim(), secretKey.trim(), testnet);
+      const acc = await api.getAccount();
+      apiRef.current = api;
+      setAccount(acc);
+      setConnected(true);
+      setScreen("dashboard");
+      addLog("✅ Terhubung ke Binance " + (testnet ? "Testnet" : "Real"), "success");
+    } catch (e) {
+      setError("Gagal konek: " + e.message);
+      addLog("❌ Koneksi gagal: " + e.message, "error");
     }
-}
+    setLoading(false);
+  };
 
-// ========== Candle Builder from WebSocket ==========
-const candles = []; // array of {time, open, high, low, close, volume}
-let currentCandle = null;
-let currentPrice = null;
-let lastSignal = '';
-const log = [];
+  const analyze = useCallback(async (pair = selectedPair) => {
+    if (!apiRef.current) return null;
+    try {
+      const [klines, ticker] = await Promise.all([
+        apiRef.current.getKlines(pair, interval, 200),
+        apiRef.current.getTicker(pair),
+      ]);
+      const result = MomentumEngine.analyze(klines, ticker);
+      result.pair = pair;
+      result.ticker = ticker;
+      result.lastUpdate = new Date().toLocaleTimeString("id-ID");
+      return result;
+    } catch (e) {
+      addLog(`⚠️ Gagal analisa ${pair}: ${e.message}`, "warn");
+      return null;
+    }
+  }, [selectedPair, interval, addLog]);
 
-function addLog(entry) {
-    log.unshift({ time: new Date().toLocaleTimeString(), ...entry });
-    if (log.length > 50) log.pop();
-    const c = document.getElementById('logContainer');
-    c.innerHTML = log.map(e => `<div class="log-item"><span style="color:var(--gold)">${e.time}</span> <strong>${e.signal}</strong> (UP ${e.up}% / DOWN ${e.down}%)</div>`).join('') || '<div style="color:var(--text2);">Tidak ada sinyal</div>';
-}
+  const runBot = useCallback(async () => {
+    if (!apiRef.current || !botRunning) return;
+    addLog("🔍 Memulai analisa pasar...", "info");
 
-function getCurrent5mTimestamp() {
-    const now = Math.floor(Date.now() / 1000);
-    return now - (now % 300); // round down to 5 minutes
-}
+    // Analyze all pairs
+    const results = {};
+    for (const pair of PAIRS) {
+      const r = await analyze(pair);
+      if (r) results[pair] = r;
+      await sleep(200);
+    }
+    setAllAnalysis(results);
 
-function updateCandle(price) {
-    const ts = getCurrent5mTimestamp();
-    if (!currentCandle || currentCandle.time !== ts) {
-        if (currentCandle) {
-            candles.push(currentCandle);
-            if (candles.length > 200) candles.shift();
-        }
-        currentCandle = {
-            time: ts,
-            open: price,
-            high: price,
-            low: price,
-            close: price,
-            volume: 0
-        };
+    const current = results[selectedPair];
+    if (current) {
+      setAnalysis(current);
+      addLog(`📊 ${selectedPair}: ${current.action} | Score: ${current.score} | Confidence: ${current.confidence}`, 
+        current.action === "BUY" ? "success" : current.action === "SELL" ? "error" : "info");
+    }
+
+    // Auto trade logic
+    if (autoTrade && current) {
+      const shouldTrade =
+        (current.action === "BUY" || current.action === "SELL") &&
+        current.confidence === minConfidence;
+      
+      if (shouldTrade) {
+        await executeOrder(current, true);
+      }
+    }
+
+    // Market overview
+    const overview = Object.values(results)
+      .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
+      .slice(0, 8);
+    setMarketOverview(overview);
+
+  }, [botRunning, selectedPair, analyze, autoTrade, minConfidence]);
+
+  const executeOrder = async (analysisData, isAuto = false) => {
+    if (!apiRef.current) return;
+    const { action, pair, price, stopLoss, takeProfit, confidence } = analysisData;
+    const side = action === "BUY" ? "BUY" : "SELL";
+    const qty = (parseFloat(tradeAmount) / price).toFixed(6);
+
+    addLog(`${isAuto ? "🤖 AUTO" : "👆 MANUAL"} ORDER: ${side} ${pair} | Qty: ${qty} | Price: ${fmt(price)}`, "info");
+
+    try {
+      const order = await apiRef.current.placeOrder(pair, side, "MARKET", qty);
+      const orderEntry = {
+        id: order.orderId,
+        pair,
+        side,
+        qty,
+        price: fmt(price),
+        sl: stopLoss ? fmt(stopLoss) : "-",
+        tp: takeProfit ? fmt(takeProfit) : "-",
+        time: ts(),
+        status: "FILLED",
+        confidence,
+        auto: isAuto,
+      };
+      setOrderHistory((prev) => [orderEntry, ...prev].slice(0, 100));
+      addLog(`✅ Order berhasil! ID: ${order.orderId} | ${side} ${qty} ${pair}`, "success");
+
+      // Place Stop Loss
+      if (stopLoss) {
+        await sleep(500);
+        try {
+          await apiRef.current.placeOrder(pair, side === "BUY" ? "SELL" : "BUY", "STOP_LOSS_LIMIT", qty,
+            fmt(stopLoss * (side === "BUY" ? 0.999 : 1.001), 2), fmt(stopLoss, 2));
+          addLog(`🛡️ Stop Loss dipasang @ ${fmt(stopLoss)}`, "info");
+        } catch (e) { addLog(`⚠️ SL gagal: ${e.message}`, "warn"); }
+      }
+
+      // Place Take Profit
+      if (takeProfit) {
+        await sleep(500);
+        try {
+          await apiRef.current.placeOrder(pair, side === "BUY" ? "SELL" : "BUY", "TAKE_PROFIT_LIMIT", qty,
+            fmt(takeProfit * (side === "BUY" ? 1.001 : 0.999), 2), fmt(takeProfit, 2));
+          addLog(`🎯 Take Profit dipasang @ ${fmt(takeProfit)}`, "info");
+        } catch (e) { addLog(`⚠️ TP gagal: ${e.message}`, "warn"); }
+      }
+
+      // Refresh account
+      const acc = await apiRef.current.getAccount();
+      setAccount(acc);
+    } catch (e) {
+      addLog(`❌ Order gagal: ${e.message}`, "error");
+    }
+    setShowConfirmOrder(null);
+  };
+
+  const startBot = () => {
+    setBotRunning(true);
+    addLog("🚀 Bot Trading AKTIF", "success");
+  };
+
+  const stopBot = () => {
+    setBotRunning(false);
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    addLog("⏹️ Bot Trading DIHENTIKAN", "warn");
+  };
+
+  useEffect(() => {
+    if (botRunning) {
+      runBot();
+      intervalRef.current = setInterval(runBot, 30000); // every 30s
     } else {
-        if (price > currentCandle.high) currentCandle.high = price;
-        if (price < currentCandle.low) currentCandle.low = price;
-        currentCandle.close = price;
-        currentCandle.volume += 1; // simplified volume counter
+      if (intervalRef.current) clearInterval(intervalRef.current);
     }
-}
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [botRunning, runBot]);
 
-// WebSocket connection
-let ws;
-function connectWS() {
-    if (ws) ws.close();
-    ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
-    ws.onmessage = (e) => {
-        const t = JSON.parse(e.data);
-        currentPrice = parseFloat(t.p);
-        updateCandle(currentPrice);
-        updateUI();
-    };
-    ws.onclose = () => setTimeout(connectWS, 3000);
-    ws.onerror = () => ws.close();
-}
+  const getUSDTBalance = () => {
+    if (!account?.balances) return "0.00";
+    const usdt = account.balances.find((b) => b.asset === "USDT");
+    return usdt ? fmt(parseFloat(usdt.free), 2) : "0.00";
+  };
 
-// ========== Technical Indicators ==========
-function SMA(d,p) {
-    let o=[];
-    for(let i=0;i<d.length;i++) {
-        if(i<p-1){ o.push(null); continue; }
-        let s=0; for(let j=i-p+1;j<=i;j++) s+=d[j];
-        o.push(s/p);
-    }
-    return o;
-}
-function EMA(d,p) {
-    let o=[d[0]], k=2/(p+1);
-    for(let i=1;i<d.length;i++) o.push(d[i]*k + o[i-1]*(1-k));
-    return o;
-}
-function RSI(c,p=14) {
-    if(c.length<p+1) return {v:null,s:'neutral'};
-    let g=0,l=0;
-    for(let i=1;i<=p;i++){ let d=c[i]-c[i-1]; if(d>0)g+=d; else l-=d; }
-    let ag=g/p, al=l/p, r=al===0?100:100-(100/(1+ag/al));
-    for(let i=p+1;i<c.length;i++){
-        let d=c[i]-c[i-1];
-        ag=(ag*(p-1)+(d>0?d:0))/p;
-        al=(al*(p-1)+(d<0?-d:0))/p;
-        r=al===0?100:100-(100/(1+ag/al));
-    }
-    return {v:r, s:r>70?'bearish':r<30?'bullish':'neutral'};
-}
-function MACD(c) {
-    if(c.length<35) return {h:null,s:'neutral'};
-    let e12=EMA(c,12), e26=EMA(c,26);
-    let macd=e12.map((v,i)=>v-e26[i]);
-    let sig=EMA(macd.slice(25),9);
-    let padded=[...new Array(25).fill(null),...sig];
-    let hist=macd.map((v,i)=>v-padded[i]);
-    let last=hist[hist.length-1];
-    return {h:last, s:last>0?'bullish':'bearish'};
-}
-function BB(c,p=20,mult=2) {
-    let sma=SMA(c,p);
-    let up=[], low=[];
-    for(let i=p-1;i<c.length;i++){
-        let slice=c.slice(i-p+1,i+1);
-        let mean=sma[i];
-        let vari=slice.reduce((s,v)=>s+Math.pow(v-mean,2),0)/p;
-        let std=Math.sqrt(vari);
-        up.push(mean+mult*std);
-        low.push(mean-mult*std);
-    }
-    return {
-        u: up[up.length-1]||null,
-        l: low[low.length-1]||null,
-        s: sma[sma.length-1]||null
-    };
-}
+  const actionColor = (action) => {
+    if (!action) return "#888";
+    if (action.includes("BUY")) return "#00e676";
+    if (action.includes("SELL")) return "#ff5252";
+    return "#ffd740";
+  };
 
-function predict() {
-    if (candles.length < 60) return null;
-    const closes = candles.map(c=>c.close);
-    const vols = candles.map(c=>c.volume);
-    const last = closes[closes.length-1];
-    const prev = closes[closes.length-2];
-    const rsi = RSI(closes);
-    const macd = MACD(closes);
-    const bb = BB(closes);
-    const sma20 = SMA(closes,20);
-    const sma50 = SMA(closes,50);
-    const lastSma20 = sma20[sma20.length-1];
-    const lastSma50 = sma50[sma50.length-1];
-
-    const candleUp = last > prev;
-    const v5 = vols.slice(-5).reduce((a,b)=>a+b,0)/5;
-    const v10 = vols.slice(-10,-5).reduce((a,b)=>a+b,0)/5;
-    const volSig = v5 > v10*1.2 ? 'up' : v5 < v10*0.8 ? 'down' : 'neutral';
-    const posBB = last < bb.l ? 'up' : last > bb.u ? 'down' : 'neutral';
-    let upHist = 0;
-    for(let i=1;i<closes.length;i++) if(closes[i]>closes[i-1]) upHist++;
-    const histUpPct = (upHist/(closes.length-1))*100;
-
-    let up=0, down=0, total=0;
-    const add = (w, dir) => {
-        total+=w;
-        if(dir==='up') up+=w;
-        else if(dir==='down') down+=w;
-        else { up+=w*0.5; down+=w*0.5; }
-    };
-    add(2, candleUp?'up':'down');
-    add(1.5, rsi.s==='bullish'?'up':rsi.s==='bearish'?'down':'neutral');
-    add(1.5, macd.s==='bullish'?'up':'down');
-    add(1.2, lastSma20>lastSma50?'up':'down');
-    add(1.0, posBB);
-    add(0.8, volSig);
-    add(1.0, histUpPct>55?'up':histUpPct<45?'down':'neutral');
-
-    const upPct = Math.round((up/total)*100);
-    const downPct = Math.round((down/total)*100);
-    let signal = upPct>downPct?'UP ▲':'DOWN ▼';
-    if(upPct>=65) signal='UP ▲▲';
-    else if(downPct>=65) signal='DOWN ▼▼';
-    if(upPct===downPct) signal='NETRAL ⬌';
-
-    let reasons = [];
-    if(rsi.v>70) reasons.push('RSI overbought');
-    if(rsi.v<30) reasons.push('RSI oversold');
-    if(macd.h>0) reasons.push('MACD bullish');
-    else reasons.push('MACD bearish');
-    if(candleUp) reasons.push('Candle naik');
-    else reasons.push('Candle turun');
-    if(volSig==='up') reasons.push('Volume naik');
-    if(reasons.length===0) reasons.push('Campuran sinyal');
-
-    return {
-        signal, upPct, downPct,
-        rsi: rsi.v?.toFixed(2),
-        macd: macd.h?.toFixed(2),
-        bbUp: bb.u?.toFixed(2),
-        bbLow: bb.l?.toFixed(2),
-        sma20: lastSma20?.toFixed(2),
-        sma50: lastSma50?.toFixed(2),
-        reasons: reasons.join(', ')
-    };
-}
-
-// ========== UI Update ==========
-function updateUI() {
-    if (!currentPrice) {
-        document.getElementById('priceDisplay').textContent = '--';
-        return;
-    }
-
-    // Price
-    document.getElementById('priceDisplay').textContent = '$' + currentPrice.toLocaleString('en-US',{minimumFractionDigits:2});
-    if (candles.length >= 1) {
-        const lastCandle = candles[candles.length-1];
-        const prevCandle = candles.length>1 ? candles[candles.length-2] : null;
-        if (prevCandle) {
-            const chg = lastCandle.close - prevCandle.close;
-            const pct = (chg/prevCandle.close)*100;
-            document.getElementById('changeDisplay').textContent = (chg>=0?'▲':'▼')+' '+Math.abs(pct).toFixed(2)+'%';
-            document.getElementById('changeDisplay').className = 'change '+(chg>=0?'up':'down');
-        }
-    }
-    document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
-
-    // Prediction
-    if (candles.length < 60) {
-        document.getElementById('predictionText').textContent = 'Mengumpulkan candle... ('+candles.length+'/60)';
-        document.getElementById('probUp').textContent = 'UP: --%';
-        document.getElementById('probDown').textContent = 'DOWN: --%';
-        document.getElementById('fillUp').style.width = '50%';
-        document.getElementById('fillDown').style.width = '50%';
-        document.getElementById('reasonText').textContent = 'Butuh minimal 60 candle 5m';
-        return;
-    }
-
-    const pred = predict();
-    if (!pred) return;
-
-    const prevSignal = document.getElementById('predictionText').textContent;
-    document.getElementById('predictionText').textContent = pred.signal;
-    document.getElementById('predictionText').style.color = pred.signal.includes('UP')?'var(--green)':pred.signal.includes('DOWN')?'var(--red)':'var(--gold)';
-    document.getElementById('probUp').textContent = 'UP: '+pred.upPct+'%';
-    document.getElementById('probDown').textContent = 'DOWN: '+pred.downPct+'%';
-    document.getElementById('fillUp').style.width = pred.upPct+'%';
-    document.getElementById('fillDown').style.width = pred.downPct+'%';
-    document.getElementById('reasonText').textContent = pred.reasons;
-
-    if (prevSignal !== pred.signal && !pred.signal.includes('NETRAL')) {
-        addLog({ signal: pred.signal, up: pred.upPct, down: pred.downPct });
-        notify(pred.signal);
-    }
-
-    // Indicators grid
-    const items = [
-        { n:'RSI', v:pred.rsi, s:parseFloat(pred.rsi)>70?'bearish':parseFloat(pred.rsi)<30?'bullish':'neutral' },
-        { n:'MACD Hist', v:pred.macd, s:parseFloat(pred.macd)>0?'bullish':'bearish' },
-        { n:'SMA 20', v:pred.sma20, s:'neutral' },
-        { n:'SMA 50', v:pred.sma50, s:'neutral' },
-        { n:'BB Upper', v:pred.bbUp, s:'neutral' },
-        { n:'BB Lower', v:pred.bbLow, s:'neutral' }
-    ];
-    const grid = document.getElementById('indicatorsGrid');
-    grid.innerHTML = items.map(i=>`
-        <div class="ind-card">
-            <div class="ind-name">${i.n}</div>
-            <div class="ind-val">${i.v||'--'}</div>
-            <span class="badge ${i.s==='bullish'?'bull':i.s==='bearish'?'bear':'neutral'}">${i.s}</span>
+  const scoreBar = (score) => {
+    const pct = Math.min(Math.abs(score) / 10 * 100, 100);
+    const color = score > 0 ? "#00e676" : score < 0 ? "#ff5252" : "#ffd740";
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ flex: 1, height: 6, background: "#333", borderRadius: 3, overflow: "hidden" }}>
+          <div style={{ width: pct + "%", height: "100%", background: color, borderRadius: 3, transition: "width .3s" }} />
         </div>
-    `).join('');
+        <span style={{ color, fontSize: 12, minWidth: 24 }}>{score > 0 ? "+" : ""}{score}</span>
+      </div>
+    );
+  };
 
-    drawChart();
+  // ── Styles ───────────────────────────────────────────────────
+  const S = {
+    app: {
+      background: "#0a0c10",
+      minHeight: "100vh",
+      fontFamily: "'JetBrains Mono', 'Courier New', monospace",
+      color: "#e0e0e0",
+      maxWidth: 430,
+      margin: "0 auto",
+      paddingBottom: 70,
+    },
+    header: {
+      background: "linear-gradient(135deg, #0d1117 0%, #161b22 100%)",
+      borderBottom: "1px solid #21262d",
+      padding: "12px 16px",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      position: "sticky",
+      top: 0,
+      zIndex: 100,
+    },
+    logo: { display: "flex", alignItems: "center", gap: 8 },
+    logoText: { fontSize: 16, fontWeight: 700, color: "#f0b90b", letterSpacing: 1 },
+    statusDot: (active) => ({
+      width: 8, height: 8, borderRadius: "50%",
+      background: active ? "#00e676" : "#ff5252",
+      boxShadow: active ? "0 0 8px #00e676" : "none",
+    }),
+    card: {
+      background: "#161b22",
+      border: "1px solid #21262d",
+      borderRadius: 12,
+      padding: 16,
+      margin: "8px 16px",
+    },
+    cardTitle: { fontSize: 11, color: "#8b949e", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 },
+    bigNum: { fontSize: 28, fontWeight: 700, color: "#f0b90b" },
+    row: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
+    label: { fontSize: 12, color: "#8b949e" },
+    value: { fontSize: 12, color: "#e0e0e0", fontWeight: 600 },
+    btn: (color = "#f0b90b", full = false) => ({
+      background: color,
+      color: color === "#f0b90b" ? "#0a0c10" : "#fff",
+      border: "none",
+      borderRadius: 10,
+      padding: "12px 20px",
+      fontSize: 13,
+      fontWeight: 700,
+      fontFamily: "inherit",
+      cursor: "pointer",
+      width: full ? "100%" : "auto",
+      letterSpacing: 0.5,
+      transition: "opacity .2s",
+    }),
+    btnOutline: (color = "#f0b90b") => ({
+      background: "transparent",
+      color: color,
+      border: `1px solid ${color}`,
+      borderRadius: 10,
+      padding: "10px 16px",
+      fontSize: 12,
+      fontWeight: 600,
+      fontFamily: "inherit",
+      cursor: "pointer",
+    }),
+    input: {
+      background: "#0d1117",
+      border: "1px solid #30363d",
+      borderRadius: 8,
+      padding: "10px 12px",
+      color: "#e0e0e0",
+      fontFamily: "inherit",
+      fontSize: 13,
+      width: "100%",
+      boxSizing: "border-box",
+    },
+    select: {
+      background: "#0d1117",
+      border: "1px solid #30363d",
+      borderRadius: 8,
+      padding: "8px 10px",
+      color: "#e0e0e0",
+      fontFamily: "inherit",
+      fontSize: 12,
+      flex: 1,
+    },
+    badge: (color) => ({
+      background: color + "22",
+      color,
+      border: `1px solid ${color}44`,
+      borderRadius: 6,
+      padding: "2px 8px",
+      fontSize: 11,
+      fontWeight: 700,
+    }),
+    navBar: {
+      position: "fixed",
+      bottom: 0,
+      left: "50%",
+      transform: "translateX(-50%)",
+      width: "100%",
+      maxWidth: 430,
+      background: "#161b22",
+      borderTop: "1px solid #21262d",
+      display: "flex",
+      zIndex: 200,
+    },
+    navBtn: (active) => ({
+      flex: 1,
+      padding: "10px 4px",
+      background: "none",
+      border: "none",
+      color: active ? "#f0b90b" : "#8b949e",
+      fontFamily: "inherit",
+      fontSize: 10,
+      cursor: "pointer",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 2,
+    }),
+    logEntry: (type) => ({
+      padding: "6px 0",
+      borderBottom: "1px solid #1a1f27",
+      fontSize: 11,
+      color: type === "success" ? "#00e676" : type === "error" ? "#ff5252" : type === "warn" ? "#ffd740" : "#8b949e",
+    }),
+    signalRow: (bullish) => ({
+      display: "flex",
+      justifyContent: "space-between",
+      padding: "5px 8px",
+      borderRadius: 6,
+      background: bullish === true ? "#00e67611" : bullish === false ? "#ff525211" : "#ffd74011",
+      marginBottom: 4,
+      fontSize: 11,
+    }),
+    toggle: (on) => ({
+      width: 44,
+      height: 24,
+      borderRadius: 12,
+      background: on ? "#f0b90b" : "#30363d",
+      position: "relative",
+      cursor: "pointer",
+      transition: "background .2s",
+      flexShrink: 0,
+    }),
+    toggleThumb: (on) => ({
+      position: "absolute",
+      top: 2,
+      left: on ? 22 : 2,
+      width: 20,
+      height: 20,
+      borderRadius: "50%",
+      background: "#fff",
+      transition: "left .2s",
+    }),
+  };
+
+  const NavBar = () => (
+    <div style={S.navBar}>
+      {[
+        { id: "dashboard", icon: "📊", label: "Dashboard" },
+        { id: "trading", icon: "⚡", label: "Trading" },
+        { id: "market", icon: "🌐", label: "Pasar" },
+        { id: "logs", icon: "📋", label: "Log" },
+        { id: "settings", icon: "⚙️", label: "Setting" },
+      ].map((n) => (
+        <button key={n.id} style={S.navBtn(screen === n.id)} onClick={() => setScreen(n.id)}>
+          <span style={{ fontSize: 18 }}>{n.icon}</span>
+          {n.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  // ── SETUP SCREEN ─────────────────────────────────────────────
+  if (screen === "setup") {
+    return (
+      <div style={S.app}>
+        <div style={{ ...S.header, justifyContent: "center", flexDirection: "column", padding: "20px 16px", gap: 4 }}>
+          <div style={{ fontSize: 32 }}>₿</div>
+          <div style={{ ...S.logoText, fontSize: 20 }}>BINANCE BOT</div>
+          <div style={{ fontSize: 11, color: "#8b949e" }}>Momentum Trading AI</div>
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cardTitle}>🔑 API Configuration</div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ ...S.label, marginBottom: 6 }}>API Key</div>
+            <input style={S.input} type="password" placeholder="Masukkan Binance API Key..."
+              value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ ...S.label, marginBottom: 6 }}>Secret Key</div>
+            <input style={S.input} type="password" placeholder="Masukkan Secret Key..."
+              value={secretKey} onChange={(e) => setSecretKey(e.target.value)} />
+          </div>
+          <div style={{ ...S.row, marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 600 }}>Mode Testnet</div>
+              <div style={{ ...S.label, fontSize: 11 }}>Gunakan akun test (aman)</div>
+            </div>
+            <div style={S.toggle(testnet)} onClick={() => setTestnet(!testnet)}>
+              <div style={S.toggleThumb(testnet)} />
+            </div>
+          </div>
+          {error && <div style={{ color: "#ff5252", fontSize: 12, marginBottom: 12, padding: "8px", background: "#ff525211", borderRadius: 8 }}>{error}</div>}
+          <button style={S.btn("#f0b90b", true)} onClick={connectAPI} disabled={loading}>
+            {loading ? "⏳ Menghubungkan..." : "🔌 CONNECT BINANCE"}
+          </button>
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cardTitle}>📋 Cara Setup</div>
+          {[
+            "1. Buka Binance → Profile → API Management",
+            "2. Buat API Key baru dengan izin Spot Trading",
+            "3. Aktifkan 'Enable Spot & Margin Trading'",
+            "4. Nonaktifkan 'Enable Withdrawals' (keamanan)",
+            "5. Whitelist IP jika perlu",
+            "6. Copy API Key & Secret ke form di atas",
+          ].map((s, i) => (
+            <div key={i} style={{ fontSize: 12, color: "#8b949e", marginBottom: 6 }}>{s}</div>
+          ))}
+        </div>
+
+        <div style={{ ...S.card, background: "#ff525211", border: "1px solid #ff525244" }}>
+          <div style={{ fontSize: 12, color: "#ff5252" }}>
+            ⚠️ <strong>PERINGATAN RISIKO:</strong> Trading crypto mengandung risiko tinggi. Bot ini bukan jaminan profit. Gunakan dengan bijak, mulai dari modal kecil. Developer tidak bertanggung jawab atas kerugian.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── DASHBOARD ────────────────────────────────────────────────
+  if (screen === "dashboard") {
+    return (
+      <div style={S.app}>
+        <div style={S.header}>
+          <div style={S.logo}>
+            <span style={{ fontSize: 20 }}>₿</span>
+            <span style={S.logoText}>BINANCE BOT</span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={S.statusDot(botRunning)} />
+            <span style={{ fontSize: 11, color: botRunning ? "#00e676" : "#ff5252" }}>
+              {botRunning ? "AKTIF" : "STANDBY"}
+            </span>
+          </div>
+        </div>
+
+        {/* Balance */}
+        <div style={S.card}>
+          <div style={S.cardTitle}>💰 Saldo USDT</div>
+          <div style={S.bigNum}>{fmtUSD(getUSDTBalance())}</div>
+          <div style={{ ...S.label, marginTop: 4 }}>Available for trading</div>
+        </div>
+
+        {/* Bot Control */}
+        <div style={S.card}>
+          <div style={S.cardTitle}>🤖 Kontrol Bot</div>
+          <div style={{ ...S.row, marginBottom: 12 }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: botRunning ? "#00e676" : "#8b949e" }}>
+                {botRunning ? "🟢 Bot Sedang Berjalan" : "⏹️ Bot Dihentikan"}
+              </div>
+              <div style={{ ...S.label, fontSize: 11 }}>Analisa tiap 30 detik</div>
+            </div>
+            <button
+              style={S.btn(botRunning ? "#ff5252" : "#00e676")}
+              onClick={botRunning ? stopBot : startBot}
+            >
+              {botRunning ? "STOP" : "START"}
+            </button>
+          </div>
+          <div style={S.row}>
+            <div>
+              <div style={{ fontSize: 13 }}>Auto Trade</div>
+              <div style={{ ...S.label, fontSize: 11 }}>Eksekusi order otomatis</div>
+            </div>
+            <div style={S.toggle(autoTrade)} onClick={() => setAutoTrade(!autoTrade)}>
+              <div style={S.toggleThumb(autoTrade)} />
+            </div>
+          </div>
+        </div>
+
+        {/* Current Analysis */}
+        {analysis && (
+          <div style={S.card}>
+            <div style={S.cardTitle}>📊 Sinyal Terkini — {analysis.pair}</div>
+            <div style={{ ...S.row, marginBottom: 8 }}>
+              <div>
+                <span style={S.badge(actionColor(analysis.action))}>{analysis.action}</span>
+                {" "}
+                <span style={S.badge(analysis.confidence === "HIGH" ? "#00e676" : analysis.confidence === "MEDIUM" ? "#ffd740" : "#8b949e")}>
+                  {analysis.confidence}
+                </span>
+              </div>
+              <div style={{ fontSize: 13, color: "#f0b90b", fontWeight: 700 }}>
+                {fmtUSD(analysis.price)}
+              </div>
+            </div>
+            {scoreBar(analysis.score)}
+            <div style={{ ...S.row, marginTop: 8 }}>
+              <div style={S.label}>RSI</div>
+              <div style={{ ...S.value, color: analysis.rsi < 30 ? "#00e676" : analysis.rsi > 70 ? "#ff5252" : "#e0e0e0" }}>
+                {analysis.rsi ? fmt(analysis.rsi) : "-"}
+              </div>
+            </div>
+            <div style={S.row}>
+              <div style={S.label}>24h Change</div>
+              <div style={{ ...S.value, color: analysis.priceChange24h > 0 ? "#00e676" : "#ff5252" }}>
+                {analysis.priceChange24h > 0 ? "+" : ""}{fmt(analysis.priceChange24h)}%
+              </div>
+            </div>
+            <div style={S.row}>
+              <div style={S.label}>Update</div>
+              <div style={S.value}>{analysis.lastUpdate}</div>
+            </div>
+            {!autoTrade && (analysis.action === "BUY" || analysis.action === "SELL") && (
+              <button
+                style={{ ...S.btn(actionColor(analysis.action), true), marginTop: 8 }}
+                onClick={() => setShowConfirmOrder(analysis)}
+              >
+                {analysis.action} {analysis.pair} SEKARANG
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Top Opportunities */}
+        {marketOverview.length > 0 && (
+          <div style={S.card}>
+            <div style={S.cardTitle}>🌐 Peluang Terbaik</div>
+            {marketOverview.slice(0, 5).map((r) => (
+              <div key={r.pair} style={{ ...S.row, padding: "6px 0", borderBottom: "1px solid #21262d" }}
+                onClick={() => { setSelectedPair(r.pair); setAnalysis(r); }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{r.pair}</div>
+                  <div style={{ ...S.label, fontSize: 11 }}>{scoreBar(r.score)}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span style={S.badge(actionColor(r.action))}>{r.action}</span>
+                  <div style={{ ...S.value, fontSize: 11, marginTop: 2 }}>{fmtUSD(r.price)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Recent Orders */}
+        {orderHistory.length > 0 && (
+          <div style={S.card}>
+            <div style={S.cardTitle}>📜 Order Terakhir</div>
+            {orderHistory.slice(0, 3).map((o) => (
+              <div key={o.id} style={{ ...S.row, padding: "6px 0", borderBottom: "1px solid #21262d" }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600 }}>{o.side} {o.pair}</div>
+                  <div style={{ ...S.label, fontSize: 10 }}>{o.time} {o.auto ? "🤖" : "👆"}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ ...S.value, fontSize: 11 }}>${o.price}</div>
+                  <div style={{ ...S.label, fontSize: 10 }}>Qty: {o.qty}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <NavBar />
+
+        {/* Confirm Order Modal */}
+        {showConfirmOrder && (
+          <div style={{
+            position: "fixed", inset: 0, background: "#000000bb", zIndex: 300,
+            display: "flex", alignItems: "flex-end",
+          }}>
+            <div style={{
+              background: "#161b22", borderRadius: "16px 16px 0 0",
+              padding: 20, width: "100%", maxWidth: 430, margin: "0 auto",
+              border: "1px solid #21262d",
+            }}>
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>
+                Konfirmasi Order
+              </div>
+              <div style={{ ...S.row }}>
+                <div style={S.label}>Pair</div>
+                <div style={{ ...S.value, color: "#f0b90b" }}>{showConfirmOrder.pair}</div>
+              </div>
+              <div style={S.row}>
+                <div style={S.label}>Action</div>
+                <span style={S.badge(actionColor(showConfirmOrder.action))}>{showConfirmOrder.action}</span>
+              </div>
+              <div style={S.row}>
+                <div style={S.label}>Harga Market</div>
+                <div style={S.value}>{fmtUSD(showConfirmOrder.price)}</div>
+              </div>
+              <div style={S.row}>
+                <div style={S.label}>Jumlah</div>
+                <div style={S.value}>${tradeAmount} USDT</div>
+              </div>
+              <div style={S.row}>
+                <div style={S.label}>Stop Loss</div>
+                <div style={{ ...S.value, color: "#ff5252" }}>
+                  {showConfirmOrder.stopLoss ? fmtUSD(showConfirmOrder.stopLoss) : "-"}
+                </div>
+              </div>
+              <div style={{ ...S.row, marginBottom: 16 }}>
+                <div style={S.label}>Take Profit</div>
+                <div style={{ ...S.value, color: "#00e676" }}>
+                  {showConfirmOrder.takeProfit ? fmtUSD(showConfirmOrder.takeProfit) : "-"}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button style={{ ...S.btnOutline("#8b949e"), flex: 1 }} onClick={() => setShowConfirmOrder(null)}>Batal</button>
+                <button style={{ ...S.btn(actionColor(showConfirmOrder.action), false), flex: 2 }}
+                  onClick={() => executeOrder(showConfirmOrder, false)}>
+                  KONFIRMASI {showConfirmOrder.action}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── TRADING SCREEN ───────────────────────────────────────────
+  if (screen === "trading") {
+    return (
+      <div style={S.app}>
+        <div style={S.header}>
+          <span style={S.logoText}>⚡ TRADING</span>
+          <span style={{ fontSize: 12, color: "#f0b90b" }}>{selectedPair}</span>
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cardTitle}>🎯 Pilih Pair & Interval</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+            {PAIRS.map((p) => {
+              const r = allAnalysis[p];
+              return (
+                <button key={p}
+                  style={{
+                    background: selectedPair === p ? "#f0b90b22" : "#0d1117",
+                    border: `1px solid ${selectedPair === p ? "#f0b90b" : "#30363d"}`,
+                    borderRadius: 8, padding: "8px 6px", cursor: "pointer",
+                    color: selectedPair === p ? "#f0b90b" : "#e0e0e0",
+                    fontFamily: "inherit", fontSize: 11, textAlign: "left",
+                  }}
+                  onClick={() => { setSelectedPair(p); if (r) setAnalysis(r); }}
+                >
+                  <div style={{ fontWeight: 700, fontSize: 12 }}>{p.replace("USDT", "")}</div>
+                  {r && <div style={{ color: actionColor(r.action), fontSize: 10 }}>{r.action}</div>}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {INTERVALS.map((iv) => (
+              <button key={iv}
+                style={{
+                  background: interval === iv ? "#f0b90b" : "#0d1117",
+                  border: `1px solid ${interval === iv ? "#f0b90b" : "#30363d"}`,
+                  borderRadius: 6, padding: "4px 10px", cursor: "pointer",
+                  color: interval === iv ? "#0a0c10" : "#e0e0e0",
+                  fontFamily: "inherit", fontSize: 11, fontWeight: interval === iv ? 700 : 400,
+                }}
+                onClick={() => setInterval_(iv)}
+              >
+                {iv}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {analysis && (
+          <>
+            <div style={S.card}>
+              <div style={S.cardTitle}>📈 Analisa Teknikal — {selectedPair}</div>
+              <div style={{ textAlign: "center", marginBottom: 12 }}>
+                <span style={{
+                  fontSize: 24, fontWeight: 800, color: actionColor(analysis.action),
+                  textShadow: `0 0 20px ${actionColor(analysis.action)}66`
+                }}>
+                  {analysis.action}
+                </span>
+                {" "}
+                <span style={{ fontSize: 14, color: "#8b949e" }}>— {analysis.confidence}</span>
+              </div>
+              {scoreBar(analysis.score)}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
+                {[
+                  ["Harga", fmtUSD(analysis.price)],
+                  ["RSI (14)", analysis.rsi ? fmt(analysis.rsi) : "-"],
+                  ["MACD", analysis.macd ? (analysis.macd.macd > 0 ? "↗ Bullish" : "↘ Bearish") : "-"],
+                  ["EMA20", analysis.ema20 ? fmt(analysis.ema20) : "-"],
+                  ["BB Upper", analysis.bb ? fmt(analysis.bb.upper) : "-"],
+                  ["BB Lower", analysis.bb ? fmt(analysis.bb.lower) : "-"],
+                  ["ATR (14)", analysis.atr ? fmt(analysis.atr) : "-"],
+                  ["Vol Ratio", analysis.volMom ? fmt(analysis.volMom, 2) + "x" : "-"],
+                  ["Stoch %K", analysis.stoch ? fmt(analysis.stoch.k) : "-"],
+                  ["24h", (analysis.priceChange24h > 0 ? "+" : "") + fmt(analysis.priceChange24h) + "%"],
+                  ["Stop Loss", analysis.stopLoss ? fmtUSD(analysis.stopLoss) : "-"],
+                  ["Take Profit", analysis.takeProfit ? fmtUSD(analysis.takeProfit) : "-"],
+                ].map(([k, v]) => (
+                  <div key={k} style={{ background: "#0d1117", borderRadius: 8, padding: "8px 10px" }}>
+                    <div style={{ ...S.label, fontSize: 10 }}>{k}</div>
+                    <div style={{ ...S.value, fontSize: 12 }}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={S.card}>
+              <div style={S.cardTitle}>🔔 Sinyal Aktif</div>
+              {analysis.signals.map((sig, i) => (
+                <div key={i} style={S.signalRow(sig.bullish)}>
+                  <span>{sig.bullish === true ? "▲" : sig.bullish === false ? "▼" : "◆"} {sig.type}</span>
+                  <span style={{ fontWeight: 700 }}>{sig.value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ margin: "0 16px 8px", display: "flex", gap: 8 }}>
+              <button style={{ ...S.btn("#00e676", false), flex: 1 }}
+                onClick={() => setShowConfirmOrder({ ...analysis, action: "BUY" })}>
+                BUY
+              </button>
+              <button
+                style={{ ...S.btn("#21262d"), flex: 1 }}
+                onClick={async () => {
+                  setLoading(true);
+                  const r = await analyze(selectedPair);
+                  if (r) setAnalysis(r);
+                  setLoading(false);
+                  addLog(`🔄 Manual analisa ${selectedPair}`, "info");
+                }}>
+                {loading ? "⏳" : "🔄 ANALISA"}
+              </button>
+              <button style={{ ...S.btn("#ff5252", false), flex: 1 }}
+                onClick={() => setShowConfirmOrder({ ...analysis, action: "SELL" })}>
+                SELL
+              </button>
+            </div>
+          </>
+        )}
+
+        {!analysis && (
+          <div style={{ ...S.card, textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
+            <div style={{ color: "#8b949e" }}>Klik tombol Analisa untuk mulai</div>
+            <button style={{ ...S.btn("#f0b90b", true), marginTop: 12 }}
+              onClick={async () => {
+                setLoading(true);
+                const r = await analyze(selectedPair);
+                if (r) setAnalysis(r);
+                setLoading(false);
+              }}>
+              {loading ? "⏳ Menganalisa..." : "🔍 MULAI ANALISA"}
+            </button>
+          </div>
+        )}
+
+        <NavBar />
+
+        {showConfirmOrder && (
+          <div style={{ position: "fixed", inset: 0, background: "#000000bb", zIndex: 300, display: "flex", alignItems: "flex-end" }}>
+            <div style={{ background: "#161b22", borderRadius: "16px 16px 0 0", padding: 20, width: "100%", maxWidth: 430, margin: "0 auto", border: "1px solid #21262d" }}>
+              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>
+                Konfirmasi {showConfirmOrder.action}
+              </div>
+              {[
+                ["Pair", showConfirmOrder.pair],
+                ["Harga Market", fmtUSD(showConfirmOrder.price)],
+                ["Jumlah Trade", `$${tradeAmount} USDT`],
+                ["Stop Loss", showConfirmOrder.stopLoss ? fmtUSD(showConfirmOrder.stopLoss) : "—"],
+                ["Take Profit", showConfirmOrder.takeProfit ? fmtUSD(showConfirmOrder.takeProfit) : "—"],
+              ].map(([k, v]) => (
+                <div key={k} style={{ ...S.row, padding: "4px 0" }}>
+                  <div style={S.label}>{k}</div>
+                  <div style={S.value}>{v}</div>
+                </div>
+              ))}
+              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+                <button style={{ ...S.btnOutline("#8b949e"), flex: 1 }} onClick={() => setShowConfirmOrder(null)}>Batal</button>
+                <button style={{ ...S.btn(actionColor(showConfirmOrder.action)), flex: 2 }}
+                  onClick={() => executeOrder(showConfirmOrder, false)}>
+                  EKSEKUSI {showConfirmOrder.action}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── MARKET SCREEN ────────────────────────────────────────────
+  if (screen === "market") {
+    return (
+      <div style={S.app}>
+        <div style={S.header}>
+          <span style={S.logoText}>🌐 PASAR GLOBAL</span>
+          <button style={S.btnOutline("#f0b90b")} onClick={async () => {
+            setLoading(true);
+            addLog("🌐 Scan pasar global...", "info");
+            const results = {};
+            for (const pair of PAIRS) {
+              const r = await analyze(pair);
+              if (r) results[pair] = r;
+              await sleep(200);
+            }
+            setAllAnalysis(results);
+            setMarketOverview(Object.values(results).sort((a, b) => Math.abs(b.score) - Math.abs(a.score)));
+            setLoading(false);
+            addLog("✅ Scan selesai", "success");
+          }}>{loading ? "⏳" : "🔄 Scan"}</button>
+        </div>
+
+        {Object.values(allAnalysis).length === 0 && (
+          <div style={{ ...S.card, textAlign: "center" }}>
+            <div style={{ fontSize: 48 }}>🌐</div>
+            <div style={{ color: "#8b949e", marginBottom: 12 }}>Klik Scan untuk analisa semua pair</div>
+          </div>
+        )}
+
+        {Object.values(allAnalysis).sort((a, b) => Math.abs(b.score) - Math.abs(a.score)).map((r) => (
+          <div key={r.pair} style={{ ...S.card, cursor: "pointer" }}
+            onClick={() => { setSelectedPair(r.pair); setAnalysis(r); setScreen("trading"); }}>
+            <div style={S.row}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>{r.pair}</div>
+                <div style={{ ...S.label, fontSize: 10 }}>Update: {r.lastUpdate}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 14, color: "#f0b90b", fontWeight: 700 }}>{fmtUSD(r.price)}</div>
+                <div style={{ color: r.priceChange24h > 0 ? "#00e676" : "#ff5252", fontSize: 11 }}>
+                  {r.priceChange24h > 0 ? "▲" : "▼"} {fmt(Math.abs(r.priceChange24h))}%
+                </div>
+              </div>
+            </div>
+            <div style={{ ...S.row, marginTop: 6 }}>
+              <span style={S.badge(actionColor(r.action))}>{r.action}</span>
+              <span style={S.badge(r.confidence === "HIGH" ? "#00e676" : r.confidence === "MEDIUM" ? "#ffd740" : "#8b949e")}>
+                {r.confidence}
+              </span>
+            </div>
+            <div style={{ marginTop: 6 }}>{scoreBar(r.score)}</div>
+          </div>
+        ))}
+
+        <NavBar />
+      </div>
+    );
+  }
+
+  // ── LOGS SCREEN ──────────────────────────────────────────────
+  if (screen === "logs") {
+    return (
+      <div style={S.app}>
+        <div style={S.header}>
+          <span style={S.logoText}>📋 LOG AKTIVITAS</span>
+          <button style={S.btnOutline("#ff5252")} onClick={() => setLogs([])}>Hapus</button>
+        </div>
+
+        <div style={{ ...S.card, marginBottom: 8 }}>
+          <div style={S.cardTitle}>📜 Riwayat Order ({orderHistory.length})</div>
+          {orderHistory.length === 0 && <div style={{ color: "#8b949e", fontSize: 12 }}>Belum ada order</div>}
+          {orderHistory.slice(0, 10).map((o) => (
+            <div key={o.id} style={{ padding: "8px 0", borderBottom: "1px solid #21262d" }}>
+              <div style={{ ...S.row }}>
+                <span style={S.badge(o.side === "BUY" ? "#00e676" : "#ff5252")}>{o.side}</span>
+                <span style={{ fontSize: 12, color: "#f0b90b", fontWeight: 700 }}>{o.pair}</span>
+                <span style={{ fontSize: 11, color: "#8b949e" }}>{o.time}</span>
+              </div>
+              <div style={{ ...S.row, marginTop: 4 }}>
+                <div style={{ fontSize: 11, color: "#8b949e" }}>Harga: ${o.price}</div>
+                <div style={{ fontSize: 11, color: "#8b949e" }}>Qty: {o.qty}</div>
+                <div style={{ fontSize: 11, color: "#8b949e" }}>{o.auto ? "🤖 Auto" : "👆 Manual"}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cardTitle}>🗒️ Log Sistem ({logs.length})</div>
+          <div style={{ maxHeight: 400, overflowY: "auto" }} ref={logRef}>
+            {logs.length === 0 && <div style={{ color: "#8b949e", fontSize: 12 }}>Belum ada log</div>}
+            {logs.map((l) => (
+              <div key={l.id} style={S.logEntry(l.type)}>
+                <span style={{ color: "#30363d" }}>{l.time}</span> {l.msg}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <NavBar />
+      </div>
+    );
+  }
+
+  // ── SETTINGS SCREEN ──────────────────────────────────────────
+  if (screen === "settings") {
+    return (
+      <div style={S.app}>
+        <div style={S.header}>
+          <span style={S.logoText}>⚙️ PENGATURAN</span>
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cardTitle}>💰 Parameter Trading</div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ ...S.label, marginBottom: 6 }}>Jumlah per Trade (USDT)</div>
+            <input style={S.input} type="number" value={tradeAmount} onChange={(e) => setTradeAmount(e.target.value)} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ ...S.label, marginBottom: 6 }}>Risk per Trade (%)</div>
+            <input style={S.input} type="number" value={riskPercent} onChange={(e) => setRiskPercent(e.target.value)} />
+          </div>
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ ...S.label, marginBottom: 6 }}>Confidence Minimum untuk Auto Trade</div>
+            <select style={S.select} value={minConfidence} onChange={(e) => setMinConfidence(e.target.value)}>
+              <option value="HIGH">HIGH (Paling Aman)</option>
+              <option value="MEDIUM">MEDIUM (Lebih Agresif)</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cardTitle}>🔄 Interval Default</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {INTERVALS.map((iv) => (
+              <button key={iv}
+                style={{
+                  background: interval === iv ? "#f0b90b" : "#0d1117",
+                  border: `1px solid ${interval === iv ? "#f0b90b" : "#30363d"}`,
+                  borderRadius: 6, padding: "6px 12px", cursor: "pointer",
+                  color: interval === iv ? "#0a0c10" : "#e0e0e0",
+                  fontFamily: "inherit", fontSize: 12, fontWeight: interval === iv ? 700 : 400,
+                }}
+                onClick={() => setInterval_(iv)}>
+                {iv}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={S.card}>
+          <div style={S.cardTitle}>🔑 Status Koneksi</div>
+          <div style={S.row}>
+            <div style={S.label}>Mode</div>
+            <span style={S.badge(testnet ? "#ffd740" : "#00e676")}>{testnet ? "TESTNET" : "REAL TRADING"}</span>
+          </div>
+          <div style={{ ...S.row }}>
+            <div style={S.label}>Status</div>
+            <span style={S.badge(connected ? "#00e676" : "#ff5252")}>{connected ? "TERHUBUNG" : "TERPUTUS"}</span>
+          </div>
+          <div style={{ ...S.row }}>
+            <div style={S.label}>Saldo USDT</div>
+            <div style={{ ...S.value, color: "#f0b90b" }}>{fmtUSD(getUSDTBalance())}</div>
+          </div>
+          <button style={{ ...S.btnOutline("#ff5252"), width: "100%", marginTop: 12 }}
+            onClick={() => { setConnected(false); setScreen("setup"); setBotRunning(false); apiRef.current = null; addLog("🔌 Disconnected", "warn"); }}>
+            🔌 Disconnect & Reset
+          </button>
+        </div>
+
+        <div style={{ ...S.card, background: "#0d1117" }}>
+          <div style={S.cardTitle}>📖 Tentang Bot</div>
+          <div style={{ fontSize: 11, color: "#8b949e", lineHeight: 1.8 }}>
+            <div>🤖 <strong style={{ color: "#f0b90b" }}>Binance Momentum Bot</strong></div>
+            <div>Indikator: RSI, MACD, Bollinger Bands, EMA 20/50/200, Stochastic, ATR, Volume</div>
+            <div>Fitur: Auto SL/TP, Multi-pair scan, Momentum scoring</div>
+            <div>Trading interval: 30 detik (auto scan)</div>
+            <div style={{ marginTop: 8, color: "#ff525288" }}>⚠️ Gunakan dengan bijak. Mulai dari modal kecil.</div>
+          </div>
+        </div>
+
+        <NavBar />
+      </div>
+    );
+  }
+
+  return null;
 }
-
-// ========== Mini Chart ==========
-function drawChart() {
-    const canvas = document.getElementById('miniChart');
-    if(!canvas || candles.length<5) return;
-    const ctx = canvas.getContext('2d');
-    const w=canvas.width, h=canvas.height;
-    const closes = candles.slice(-50).map(c=>c.close);
-    const min = Math.min(...closes)*0.999;
-    const max = Math.max(...closes)*1.001;
-    const range = max-min;
-    ctx.clearRect(0,0,w,h);
-    ctx.strokeStyle='#334155';
-    ctx.lineWidth=0.5;
-    for(let i=0;i<5;i++) {
-        let y=20+(h-40)*(i/4);
-        ctx.beginPath(); ctx.moveTo(30,y); ctx.lineTo(w-10,y); ctx.stroke();
-    }
-    ctx.beginPath();
-    ctx.strokeStyle='#f7931a';
-    ctx.lineWidth=2;
-    for(let i=0;i<closes.length;i++) {
-        let x=30+(w-40)*(i/(closes.length-1));
-        let y=20+(h-40)*(1-(closes[i]-min)/range);
-        if(i===0) ctx.moveTo(x,y);
-        else ctx.lineTo(x,y);
-    }
-    ctx.stroke();
-    let lx=30+(w-40);
-    let ly=20+(h-40)*(1-(closes[closes.length-1]-min)/range);
-    ctx.fillStyle='#f7931a';
-    ctx.beginPath(); ctx.arc(lx,ly,4,0,2*Math.PI); ctx.fill();
-    ctx.fillStyle='#94a3b8';
-    ctx.font='10px JetBrains Mono';
-    ctx.fillText('$'+max.toFixed(0),32,16);
-    ctx.fillText('$'+min.toFixed(0),32,h-5);
-}
-
-// ========== Start ==========
-connectWS();
-// Update UI setiap detik agar tetap responsif
-setInterval(updateUI, 1000);
-</script>
-</body>
-</html>
