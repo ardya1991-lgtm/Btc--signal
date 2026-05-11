@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="BTC Signal">
-    <title>BTC 5m Sinyal Trading</title>
+    <meta name="apple-mobile-web-app-title" content="BTC 5m Up/Down">
+    <title>BTC 5m Up/Down Predictor</title>
     <link rel="manifest" href="data:application/json;base64,${MANIFEST_JSON_BASE64}">
     <style>
         :root {
@@ -20,141 +20,157 @@
             --border: #334155;
             --gold: #f59e0b;
         }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * { margin:0; padding:0; box-sizing:border-box; }
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            padding: 16px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
+            font-family:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background:var(--bg);
+            color:var(--text);
+            padding:16px;
+            min-height:100vh;
+            display:flex;
+            flex-direction:column;
+            gap:16px;
         }
         .header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: var(--card-bg);
-            padding: 16px;
-            border-radius: 16px;
-            border: 1px solid var(--border);
+            display:flex;
+            align-items:center;
+            gap:12px;
+            background:var(--card-bg);
+            padding:16px;
+            border-radius:16px;
+            border:1px solid var(--border);
         }
         .logo {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            background: linear-gradient(135deg, #f7931a, #ff6b35);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            font-weight: bold;
+            width:48px;
+            height:48px;
+            border-radius:12px;
+            background:linear-gradient(135deg, #f7931a, #ff6b35);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-size:28px;
+            font-weight:bold;
         }
         .price-block {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 16px;
-            border: 1px solid var(--border);
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 16px;
+            background:var(--card-bg);
+            border-radius:16px;
+            padding:16px;
+            border:1px solid var(--border);
+            display:flex;
+            flex-wrap:wrap;
+            align-items:center;
+            gap:16px;
         }
         .price {
-            font-size: 2rem;
-            font-weight: 800;
-            font-family: 'JetBrains Mono', monospace;
+            font-size:2rem;
+            font-weight:800;
+            font-family:'JetBrains Mono', monospace;
         }
         .change {
-            font-size: 0.9rem;
-            font-weight: 600;
-            padding: 4px 12px;
-            border-radius: 8px;
+            font-size:0.9rem;
+            font-weight:600;
+            padding:4px 12px;
+            border-radius:8px;
         }
-        .up { background: rgba(16,185,129,0.2); color: var(--green); }
-        .down { background: rgba(239,68,68,0.2); color: var(--red); }
-        .signal-box {
-            background: var(--card-bg);
-            border-radius: 16px;
-            padding: 24px;
-            text-align: center;
-            border: 2px solid var(--border);
+        .up { background:rgba(16,185,129,0.2); color:var(--green); }
+        .down { background:rgba(239,68,68,0.2); color:var(--red); }
+        .prediction-box {
+            background:var(--card-bg);
+            border-radius:16px;
+            padding:24px;
+            text-align:center;
+            border:2px solid var(--border);
         }
-        .signal-title { font-size: 0.85rem; color: var(--text2); margin-bottom: 8px; }
-        .signal-value {
-            font-size: 2.8rem;
-            font-weight: 900;
-            letter-spacing: -0.02em;
+        .prediction-title { font-size:0.85rem; color:var(--text2); margin-bottom:8px; }
+        .prediction-value {
+            font-size:2.8rem;
+            font-weight:900;
+            letter-spacing:-0.02em;
         }
+        .probabilities {
+            display:flex;
+            justify-content:center;
+            gap:24px;
+            margin-top:12px;
+            font-size:1.1rem;
+            font-weight:600;
+        }
+        .prob-up { color:var(--green); }
+        .prob-down { color:var(--red); }
         .conf-bar {
-            height: 10px;
-            border-radius: 5px;
-            background: #334155;
-            margin-top: 12px;
-            overflow: hidden;
+            height:10px;
+            border-radius:5px;
+            background:#334155;
+            margin-top:12px;
+            overflow:hidden;
+            display:flex;
         }
-        .conf-fill {
-            height: 100%;
-            border-radius: 5px;
-            transition: width 0.3s;
+        .conf-fill-up {
+            height:100%;
+            background:var(--green);
+            transition:width 0.3s;
+        }
+        .conf-fill-down {
+            height:100%;
+            background:var(--red);
+            transition:width 0.3s;
         }
         .mini-chart {
-            width: 100%;
-            height: 200px;
-            background: var(--card-bg);
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            display: block;
+            width:100%;
+            height:200px;
+            background:var(--card-bg);
+            border-radius:12px;
+            border:1px solid var(--border);
+            display:block;
         }
         .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 12px;
+            display:grid;
+            grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+            gap:12px;
         }
         .ind-card {
-            background: var(--card-bg);
-            padding: 14px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            text-align: center;
+            background:var(--card-bg);
+            padding:14px;
+            border-radius:12px;
+            border:1px solid var(--border);
+            text-align:center;
         }
-        .ind-name { font-size: 0.7rem; color: var(--text2); text-transform: uppercase; }
-        .ind-val { font-size: 1.3rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+        .ind-name { font-size:0.7rem; color:var(--text2); text-transform:uppercase; }
+        .ind-val { font-size:1.3rem; font-weight:700; font-family:'JetBrains Mono', monospace; }
         .badge {
-            display: inline-block;
-            font-size: 0.7rem;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 6px;
-            margin-top: 4px;
+            display:inline-block;
+            font-size:0.7rem;
+            font-weight:600;
+            padding:2px 8px;
+            border-radius:6px;
+            margin-top:4px;
         }
-        .badge.bull { background: rgba(16,185,129,0.2); color: var(--green); }
-        .badge.bear { background: rgba(239,68,68,0.2); color: var(--red); }
-        .badge.neutral { background: rgba(245,158,11,0.2); color: var(--gold); }
+        .badge.bull { background:rgba(16,185,129,0.2); color:var(--green); }
+        .badge.bear { background:rgba(239,68,68,0.2); color:var(--red); }
+        .badge.neutral { background:rgba(245,158,11,0.2); color:var(--gold); }
         .log-container {
-            max-height: 200px;
-            overflow-y: auto;
-            background: var(--card-bg);
-            border-radius: 12px;
-            padding: 12px;
-            border: 1px solid var(--border);
-            font-size: 0.75rem;
-            font-family: 'JetBrains Mono', monospace;
+            max-height:200px;
+            overflow-y:auto;
+            background:var(--card-bg);
+            border-radius:12px;
+            padding:12px;
+            border:1px solid var(--border);
+            font-size:0.75rem;
+            font-family:'JetBrains Mono', monospace;
         }
-        .log-item { padding: 6px 0; border-bottom: 1px solid var(--border); }
+        .log-item { padding:6px 0; border-bottom:1px solid var(--border); }
         .modal {
-            position: fixed; top:0; left:0; width:100%; height:100%;
-            background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; z-index: 999;
+            position:fixed; top:0; left:0; width:100%; height:100%;
+            background:rgba(0,0,0,0.85); display:flex; align-items:center; justify-content:center; z-index:999;
         }
         .modal-content {
-            background: var(--card-bg); padding: 24px; border-radius: 16px; max-width: 320px; text-align: center; border: 1px solid var(--border);
+            background:var(--card-bg); padding:24px; border-radius:16px; max-width:320px; text-align:center; border:1px solid var(--border);
         }
         button {
-            padding: 10px 20px; border-radius: 8px; border: none; font-weight: bold; margin-top: 12px; background: var(--green); color: #000;
+            padding:10px 20px; border-radius:8px; border:none; font-weight:bold; margin-top:12px; background:var(--green); color:#000;
         }
         .toggle-btn {
-            padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 0.7rem;
+            padding:6px 12px; border-radius:6px; border:1px solid var(--border); background:var(--card-bg); color:var(--text); font-size:0.7rem;
         }
     </style>
 </head>
@@ -163,7 +179,7 @@
 <!-- Header -->
 <div class="header">
     <div class="logo">₿</div>
-    <div><h1 style="font-size:1.2rem;">BTC 5m Trading Signal</h1><span style="font-size:0.7rem;color:var(--text2);">Real‑time analysis</span></div>
+    <div><h1 style="font-size:1.2rem;">BTC 5m Up/Down</h1><span style="font-size:0.7rem;color:var(--text2);">Prediksi 5 menit ke depan</span></div>
     <button class="toggle-btn" onclick="toggleAudio()" style="margin-left:auto;">🔔 <span id="audioStatus">Off</span></button>
 </div>
 
@@ -180,29 +196,35 @@
 <!-- Mini Chart -->
 <canvas class="mini-chart" id="miniChart" width="400" height="200"></canvas>
 
-<!-- Trading Signal -->
-<div class="signal-box" id="signalBox">
-    <div class="signal-title">🎯 SINYAL TRADING</div>
-    <div class="signal-value" id="signalText">--</div>
-    <div style="font-size:0.8rem;color:var(--text2);margin-top:6px;">Keyakinan: <span id="confidenceText">--</span>%</div>
-    <div class="conf-bar"><div class="conf-fill" id="confFill" style="width:0%"></div></div>
+<!-- Prediction Box -->
+<div class="prediction-box" id="predictionBox">
+    <div class="prediction-title">⏳ Prediksi 5 Menit ke Depan</div>
+    <div class="prediction-value" id="predictionText">--</div>
+    <div class="probabilities">
+        <span class="prob-up" id="probUp">UP: --%</span>
+        <span class="prob-down" id="probDown">DOWN: --%</span>
+    </div>
+    <div class="conf-bar">
+        <div class="conf-fill-up" id="confFillUp" style="width:50%;"></div>
+        <div class="conf-fill-down" id="confFillDown" style="width:50%;"></div>
+    </div>
     <div style="font-size:0.7rem;color:var(--text2);margin-top:10px;" id="reasonText"></div>
 </div>
 
-<!-- Indikator Teknikal -->
+<!-- Indikator -->
 <div class="grid" id="indicatorsGrid"></div>
 
 <!-- Log Sinyal -->
-<div style="font-size:0.8rem;color:var(--text2);">📋 Log Sinyal Terbaru</div>
+<div style="font-size:0.8rem;color:var(--text2);">📋 Log Prediksi 5m</div>
 <div class="log-container" id="logContainer">
     <div style="color:var(--text2);">Menunggu sinyal...</div>
 </div>
 
-<!-- Modal Disclaimer -->
+<!-- Modal -->
 <div class="modal" id="disclaimerModal">
     <div class="modal-content">
         <h3 style="color:var(--gold);">⚠️ Peringatan Risiko</h3>
-        <p style="font-size:0.8rem;margin:12px 0;">Bot ini hanya alat analisis teknikal. <strong>BUKAN jaminan profit.</strong><br>Trading crypto sangat berisiko. Gunakan dengan manajemen risiko ketat.</p>
+        <p style="font-size:0.8rem;margin:12px 0;">Prediksi ini hanya alat bantu analisis. <strong>BUKAN jaminan profit.</strong><br>Trading crypto sangat berisiko.</p>
         <button onclick="closeDisclaimer()">Saya Mengerti</button>
     </div>
 </div>
@@ -210,7 +232,7 @@
 <script>
 // ========== PWA & Service Worker ==========
 if ('serviceWorker' in navigator) {
-    const swCode = `const CACHE_NAME='btc-signal-v2';self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request).then(r=>{if(r.ok){let a=r.clone();caches.open(CACHE_NAME).then(c=>c.put(e.request,a))}return r}).catch(()=>c)))});`;
+    const swCode = `const CACHE_NAME='btc-5m-pred-v1';self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(c=>c||fetch(e.request).then(r=>{if(r.ok){let a=r.clone();caches.open(CACHE_NAME).then(c=>c.put(e.request,a))}return r}).catch(()=>c)))});`;
     navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode],{type:'application/javascript'})));
 }
 
@@ -224,15 +246,14 @@ function toggleAudio() {
     }
 }
 
-function notifySignal(signal) {
-    // Audio & getar hanya jika diaktifkan
+function notify(signal) {
     if (!audioEnabled) return;
     if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.frequency.value = signal.includes('BUY') ? 800 : 400;
+        osc.frequency.value = signal.includes('UP') ? 800 : 400;
         gain.gain.value = 0.3;
         osc.connect(gain);
         gain.connect(ctx.destination);
@@ -240,8 +261,8 @@ function notifySignal(signal) {
         osc.stop(ctx.currentTime + 0.2);
     } catch(e) {}
     if (Notification.permission === 'granted') {
-        new Notification(`Sinyal BTC 5m: ${signal}`, {
-            body: `Sinyal ${signal} terdeteksi pada ${new Date().toLocaleTimeString()}`,
+        new Notification(`Prediksi 5m: ${signal}`, {
+            body: `Probabilitas ${signal} pada ${new Date().toLocaleTimeString()}`,
             icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" rx="6" fill="%23f7931a"/><text x="16" y="24" font-size="20" text-anchor="middle" fill="white">₿</text></svg>'
         });
     }
@@ -250,7 +271,7 @@ function notifySignal(signal) {
 // ========== Data Handling ==========
 let candles = [];
 let currentPrice = null;
-let lastSignal = '';
+let lastPrediction = '';
 const signalLog = [];
 
 function addLog(entry) {
@@ -262,7 +283,7 @@ function addLog(entry) {
 function renderLog() {
     const container = document.getElementById('logContainer');
     container.innerHTML = signalLog.map(e => 
-        `<div class="log-item"><span style="color:var(--gold)">${e.time}</span> <strong style="color:${e.signal.includes('BUY')?'var(--green)':'var(--red)'}">${e.signal}</strong> (${e.confidence}%)</div>`
+        `<div class="log-item"><span style="color:var(--gold)">${e.time}</span> <strong style="color:${e.signal.includes('UP')?'var(--green)':'var(--red)'}">${e.signal}</strong> (UP ${e.upProb}% / DOWN ${e.downProb}%)</div>`
     ).join('') || '<div style="color:var(--text2);">Tidak ada sinyal</div>';
 }
 
@@ -287,15 +308,26 @@ async function fetchKlines(limit = 200) {
 let ws = null;
 function connectWS() {
     if(ws) ws.close();
-    ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+    ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@kline_5m');
     ws.onmessage = (e) => {
-        const t = JSON.parse(e.data);
+        const msg = JSON.parse(e.data);
+        if (msg.k && msg.k.x) { // candle 5m closed
+            // Update terbaru, ambil candle penuh
+            fetchKlines(200).then(() => updateUI());
+        }
+        // update real-time price dari trade
+    };
+    // juga stream trade untuk harga real-time
+    const wsTrade = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
+    wsTrade.onmessage = (ev) => {
+        const t = JSON.parse(ev.data);
         if(t.p) { currentPrice = parseFloat(t.p); updateUI(); }
     };
     ws.onclose = () => setTimeout(connectWS, 3000);
+    wsTrade.onclose = () => {}; // wsTrade reconnect handled?
 }
 
-// ========== Technical Indicators (Fixed) ==========
+// ========== Technical Indicators ==========
 function SMA(data, p) {
     let out = new Array(data.length).fill(null);
     for(let i=p-1;i<data.length;i++) {
@@ -304,14 +336,12 @@ function SMA(data, p) {
     }
     return out;
 }
-
 function EMA(data, p) {
     let out = [data[0]];
     let k = 2/(p+1);
     for(let i=1;i<data.length;i++) out.push(data[i]*k + out[i-1]*(1-k));
     return out;
 }
-
 function RSI(closes, p=14) {
     if(closes.length<p+1) return {val:null,sig:'neutral'};
     let gains=0, losses=0;
@@ -330,7 +360,6 @@ function RSI(closes, p=14) {
     let sig = rsiVal>70?'bearish':rsiVal<30?'bullish':'neutral';
     return {val:rsiVal,sig};
 }
-
 function MACD(closes) {
     if(closes.length<35) return {hist:null,sig:'neutral'};
     let ema12=EMA(closes,12), ema26=EMA(closes,26);
@@ -341,7 +370,6 @@ function MACD(closes) {
     let lastHist = hist[hist.length-1];
     return {hist:lastHist, sig:lastHist>0?'bullish':'bearish'};
 }
-
 function Bollinger(closes, p=20, mult=2) {
     let sma = SMA(closes,p);
     let upper=[], lower=[];
@@ -360,73 +388,94 @@ function Bollinger(closes, p=20, mult=2) {
     };
 }
 
-function analyze() {
-    if(candles.length<50) return null;
-    let closes = candles.map(c=>c.close);
-    let volumes = candles.map(c=>c.volume);
+// ========== 5-MINUTE DIRECTION PREDICTION ==========
+function predict5min() {
+    if(candles.length<60) return null;
+    const closes = candles.map(c=>c.close);
+    const volumes = candles.map(c=>c.volume);
+    const lastIdx = closes.length-1;
+    const current = closes[lastIdx];
+    const prev = closes[lastIdx-1];
+
+    // 1. Hitung fitur-fitur candle terakhir
+    const rsi = RSI(closes);
+    const macd = MACD(closes);
+    const bb = Bollinger(closes);
     
-    let rsi = RSI(closes);
-    let macd = MACD(closes);
-    let bb = Bollinger(closes);
-    let sma20 = SMA(closes,20);
-    let sma50 = SMA(closes,50);
-    let lastClose = closes[closes.length-1];
-    let prevClose = closes[closes.length-2];
-    let change = lastClose - prevClose;
-    let changePct = (change/prevClose)*100;
+    // 2. Momentum 5 menit terakhir (candle terbaru vs sebelumnya)
+    const candleChange = current - prev;
+    const candleChangePct = (candleChange/prev)*100;
     
-    let mom3 = closes.slice(-4).reduce((s,v,i,a)=>i>0?s+(v-a[i-1]):0,0);
-    let mom5 = closes.slice(-6).reduce((s,v,i,a)=>i>0?s+(v-a[i-1]):0,0);
+    // 3. Volume momentum (5 candle terakhir vs 5 sebelumnya)
+    const vol5 = volumes.slice(-5).reduce((a,b)=>a+b,0)/5;
+    const vol10 = volumes.slice(-10,-5).reduce((a,b)=>a+b,0)/5;
+    const volSignal = vol5 > vol10*1.2 ? 'bullish' : vol5 < vol10*0.8 ? 'bearish' : 'neutral';
     
-    let volAvg5 = volumes.slice(-5).reduce((a,b)=>a+b,0)/5;
-    let volAvg10 = volumes.slice(-10,-5).reduce((a,b)=>a+b,0)/5;
-    let volSig = volAvg5>volAvg10*1.3?'bullish':volAvg5<volAvg10*0.7?'bearish':'neutral';
+    // 4. Trend SMA 20 vs SMA 50
+    const sma20 = SMA(closes,20);
+    const sma50 = SMA(closes,50);
+    const trendUp = sma20[lastIdx] > sma50[lastIdx];
     
-    let bullish=0, bearish=0, total=0;
-    const add = (sig, w) => {
-        total+=w;
-        if(sig==='bullish') bullish+=w;
-        else if(sig==='bearish') bearish+=w;
-        else { bullish+=w*0.5; bearish+=w*0.5; }
+    // 5. Pola harga vs Bollinger
+    const priceVsBB = current < bb.lower ? 'bullish' : current > bb.upper ? 'bearish' : 'neutral';
+    
+    // 6. Statistik historis: berapa % candle 5m sebelumnya yang naik?
+    let upCount = 0;
+    for(let i=1;i<closes.length;i++) {
+        if(closes[i] > closes[i-1]) upCount++;
+    }
+    const historicalUpProb = (upCount / (closes.length-1)) * 100;
+    
+    // ==== SYSTEM SCORING untuk probabilitas UP 5 menit ke depan ====
+    let upScore = 0, downScore = 0, total = 0;
+    const add = (condition, weight, direction) => {
+        total += weight;
+        if(direction === 'up') upScore += weight;
+        else if(direction === 'down') downScore += weight;
+        else { upScore += weight*0.5; downScore += weight*0.5; }
     };
-    add(rsi.sig, 1.5);
-    add(macd.sig, 1.5);
-    add(sma20[sma20.length-1]>sma50[sma50.length-1]?'bullish':'bearish', 1.2);
-    add(lastClose>bb.upper?'bearish':lastClose<bb.lower?'bullish':'neutral', 1.0);
-    add(mom3>0?'bullish':mom3<0?'bearish':'neutral', 1.0);
-    add(mom5>0?'bullish':mom5<0?'bearish':'neutral', 0.8);
-    add(volSig, 0.7);
     
-    let bullPct = (bullish/total)*100;
-    let bearPct = (bearish/total)*100;
+    // Momentum candle terakhir
+    add(true, 2, candleChange > 0 ? 'up' : 'down');
+    // RSI
+    add(true, 1.5, rsi.val < 30 ? 'up' : rsi.val > 70 ? 'down' : 'neutral');
+    // MACD
+    add(true, 1.5, macd.hist > 0 ? 'up' : 'down');
+    // Trend SMA
+    add(true, 1.2, trendUp ? 'up' : 'down');
+    // Bollinger
+    add(true, 1.0, priceVsBB);
+    // Volume momentum
+    add(true, 0.8, volSignal);
+    // Historical bias
+    add(true, 1.0, historicalUpProb > 55 ? 'up' : historicalUpProb < 45 ? 'down' : 'neutral');
     
-    let signal, conf, color;
-    if(bullPct>=75) signal = 'STRONG BUY 🟢';
-    else if(bullPct>=60) signal = 'BUY 🟩';
-    else if(bullPct>40 && bearPct>40) signal = 'NEUTRAL ⬜';
-    else if(bearPct>=75) signal = 'STRONG SELL 🔴';
-    else if(bearPct>=60) signal = 'SELL 🟥';
-    else signal = 'NEUTRAL ⬜';
+    const upProb = Math.round((upScore / total) * 100);
+    const downProb = Math.round((downScore / total) * 100);
     
-    conf = Math.round(Math.max(bullPct, bearPct));
-    if(signal.includes('NEUTRAL')) conf = 50;
+    let signal = upProb > downProb ? 'UP ▲' : downProb > upProb ? 'DOWN ▼' : 'NETRAL ⬌';
+    if(upProb >= 65) signal = 'UP ▲▲';
+    else if(downProb >= 65) signal = 'DOWN ▼▼';
     
+    // Alasan
     let reasons = [];
-    if(rsi.val && rsi.val>70) reasons.push('RSI Overbought');
-    if(rsi.val && rsi.val<30) reasons.push('RSI Oversold');
-    if(macd.hist && macd.hist>0) reasons.push('MACD bullish');
-    else if(macd.hist) reasons.push('MACD bearish');
-    if(lastClose<bb.lower) reasons.push('Harga di bawah BB lower');
-    if(lastClose>bb.upper) reasons.push('Harga di atas BB upper');
-    if(volSig==='bullish') reasons.push('Volume naik');
-    if(reasons.length===0) reasons.push('Sinyal campuran');
+    if(rsi.val && rsi.val>70) reasons.push('RSI overbought');
+    if(rsi.val && rsi.val<30) reasons.push('RSI oversold');
+    if(macd.hist>0) reasons.push('MACD naik');
+    else reasons.push('MACD turun');
+    if(candleChange>0) reasons.push('Candle bullish');
+    else reasons.push('Candle bearish');
+    if(volSignal==='bullish') reasons.push('Volume meningkat');
     
     return {
-        signal, confidence: conf, bullPct: Math.round(bullPct), bearPct: Math.round(bearPct),
-        changePct, lastClose,
-        rsi: rsi.val, macdHist: macd.hist, bbUpper: bb.upper, bbLower: bb.lower,
-        sma20: sma20[sma20.length-1], sma50: sma50[sma50.length-1],
-        reasons: reasons.join(', ')
+        signal, upProb, downProb,
+        rsi: rsi.val?.toFixed(2),
+        macdHist: macd.hist?.toFixed(2),
+        bbUpper: bb.upper?.toFixed(2),
+        bbLower: bb.lower?.toFixed(2),
+        sma20: sma20[lastIdx]?.toFixed(2),
+        sma50: sma50[lastIdx]?.toFixed(2),
+        reasons: reasons.join(', ') || 'Analisis teknikal campuran'
     };
 }
 
@@ -467,52 +516,52 @@ function drawMiniChart() {
     ctx.fillText('$'+min.toFixed(0), 32, h-5);
 }
 
-// ========== UI Update (FIXED) ==========
+// ========== UI Update ==========
 function updateUI() {
     if(!candles.length) return;
+    const pred = predict5min();
+    if(!pred) return;
 
-    const analysis = analyze();
-    if(!analysis) return;
-
-    // Harga
-    document.getElementById('priceDisplay').textContent = '$' + (currentPrice||analysis.lastClose).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    // Price
+    document.getElementById('priceDisplay').textContent = '$' + (currentPrice || candles[candles.length-1].close).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
     const chg = document.getElementById('changeDisplay');
-    chg.textContent = (analysis.changePct>=0?'▲':'▼')+' '+Math.abs(analysis.changePct).toFixed(2)+'%';
-    chg.className = 'change '+(analysis.changePct>=0?'up':'down');
+    const lastChange = candles[candles.length-1].close - candles[candles.length-2].close;
+    chg.textContent = (lastChange>=0?'▲':'▼')+' '+Math.abs((lastChange/candles[candles.length-2].close)*100).toFixed(2)+'%';
+    chg.className = 'change '+(lastChange>=0?'up':'down');
     document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
 
-    // Sinyal
-    const sigText = document.getElementById('signalText');
-    const prevSignal = sigText.textContent;
-    sigText.textContent = analysis.signal;
-    sigText.style.color = analysis.signal.includes('BUY')?'var(--green)':analysis.signal.includes('SELL')?'var(--red)':'var(--gold)';
-    document.getElementById('confidenceText').textContent = analysis.confidence;
-    document.getElementById('confFill').style.width = analysis.confidence+'%';
-    document.getElementById('confFill').style.background = analysis.signal.includes('BUY')?'var(--green)':analysis.signal.includes('SELL')?'var(--red)':'var(--gold)';
-    document.getElementById('reasonText').textContent = analysis.reasons;
+    // Prediction
+    const predText = document.getElementById('predictionText');
+    const prevPred = predText.textContent;
+    predText.textContent = pred.signal;
+    predText.style.color = pred.signal.includes('UP')?'var(--green)':pred.signal.includes('DOWN')?'var(--red)':'var(--gold)';
+    document.getElementById('probUp').textContent = 'UP: '+pred.upProb+'%';
+    document.getElementById('probDown').textContent = 'DOWN: '+pred.downProb+'%';
+    document.getElementById('confFillUp').style.width = pred.upProb+'%';
+    document.getElementById('confFillDown').style.width = pred.downProb+'%';
+    document.getElementById('reasonText').textContent = pred.reasons;
 
-    // === PERBAIKAN LOG: selalu catat jika sinyal berubah ke BUY/SELL (tidak perlu audio) ===
-    if (prevSignal !== analysis.signal && !analysis.signal.includes('NEUTRAL')) {
-        addLog({ signal: analysis.signal, confidence: analysis.confidence });
-        // Notifikasi suara/getar hanya jika audio diaktifkan
-        if (audioEnabled) notifySignal(analysis.signal);
+    // Log perubahan sinyal
+    if (prevPred !== pred.signal && !pred.signal.includes('NETRAL')) {
+        addLog({ signal: pred.signal, upProb: pred.upProb, downProb: pred.downProb });
+        notify(pred.signal);
     }
 
-    // Grid Indikator (FIX)
+    // Indikator grid
     const grid = document.getElementById('indicatorsGrid');
     const items = [
-        { name: 'RSI (14)', val: analysis.rsi?.toFixed(2) || '--', sig: analysis.rsi > 70 ? 'bearish' : analysis.rsi < 30 ? 'bullish' : 'neutral' },
-        { name: 'MACD Hist', val: analysis.macdHist?.toFixed(2) || '--', sig: analysis.macdHist > 0 ? 'bullish' : 'bearish' },
-        { name: 'SMA 20', val: analysis.sma20?.toFixed(2) || '--', sig: 'neutral' },
-        { name: 'SMA 50', val: analysis.sma50?.toFixed(2) || '--', sig: 'neutral' },
-        { name: 'BB Upper', val: analysis.bbUpper?.toFixed(2) || '--', sig: 'neutral' },
-        { name: 'BB Lower', val: analysis.bbLower?.toFixed(2) || '--', sig: 'neutral' }
+        { name:'RSI', val:pred.rsi, sig: parseFloat(pred.rsi)>70?'bearish':parseFloat(pred.rsi)<30?'bullish':'neutral' },
+        { name:'MACD Hist', val:pred.macdHist, sig: parseFloat(pred.macdHist)>0?'bullish':'bearish' },
+        { name:'SMA 20', val:pred.sma20, sig:'neutral' },
+        { name:'SMA 50', val:pred.sma50, sig:'neutral' },
+        { name:'BB Upper', val:pred.bbUpper, sig:'neutral' },
+        { name:'BB Lower', val:pred.bbLower, sig:'neutral' }
     ];
-    grid.innerHTML = items.map(item => `
+    grid.innerHTML = items.map(i=>`
         <div class="ind-card">
-            <div class="ind-name">${item.name}</div>
-            <div class="ind-val">${item.val}</div>
-            <span class="badge ${item.sig === 'bullish' ? 'bull' : item.sig === 'bearish' ? 'bear' : 'neutral'}">${item.sig}</span>
+            <div class="ind-name">${i.name}</div>
+            <div class="ind-val">${i.val}</div>
+            <span class="badge ${i.sig==='bullish'?'bull':i.sig==='bearish'?'bear':'neutral'}">${i.sig}</span>
         </div>
     `).join('');
 
@@ -522,11 +571,11 @@ function updateUI() {
 // ========== Init ==========
 function closeDisclaimer() {
     document.getElementById('disclaimerModal').style.display='none';
-    localStorage.setItem('btcbot_disclaimer_accepted_v2','1');
+    localStorage.setItem('btc5mDisclaimer','1');
 }
 
 window.onload = () => {
-    if (!localStorage.getItem('btcbot_disclaimer_accepted_v2')) {
+    if (!localStorage.getItem('btc5mDisclaimer')) {
         document.getElementById('disclaimerModal').style.display = 'flex';
     }
     fetchKlines().then(() => {
