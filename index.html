@@ -6,8 +6,7 @@
     <meta name="theme-color" content="#0f172a">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="BTC 5m Up/Down">
-    <title>BTC 5m Up/Down</title>
+    <title>BTC 5m Up/Down Predictor</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -162,14 +161,12 @@
 </head>
 <body>
 
-<!-- Header -->
 <div class="header">
     <div class="logo">₿</div>
-    <div><h1 style="font-size:1.2rem;">BTC 5m Up/Down</h1><span style="font-size:0.7rem;color:var(--text2);">Prediksi 5 menit ke depan</span></div>
+    <div><h1 style="font-size:1.2rem;">BTC 5m Up/Down</h1><span style="font-size:0.7rem;color:var(--text2);">Real‑time dari WebSocket</span></div>
     <button class="btn" onclick="toggleAudio()" style="margin-left:auto;">🔔 <span id="audioStatus">Off</span></button>
 </div>
 
-<!-- Price -->
 <div class="price-block">
     <div>
         <div style="font-size:0.7rem;color:var(--text2);">BTC/USDT</div>
@@ -179,13 +176,11 @@
     <div style="margin-left:auto;font-size:0.75rem;color:var(--text2);" id="updateTime">--</div>
 </div>
 
-<!-- Mini Chart -->
 <canvas class="mini-chart" id="miniChart" width="400" height="200"></canvas>
 
-<!-- Prediction Box -->
 <div class="prediction-box" id="predictionBox">
     <div class="prediction-title">⏳ Prediksi 5 Menit ke Depan</div>
-    <div class="prediction-value" id="predictionText">Memuat data...</div>
+    <div class="prediction-value" id="predictionText">Mengumpulkan candle...</div>
     <div class="prob-row">
         <span class="prob-up" id="probUp">UP: --%</span>
         <span class="prob-down" id="probDown">DOWN: --%</span>
@@ -197,20 +192,24 @@
     <div style="font-size:0.7rem;color:var(--text2);margin-top:10px;" id="reasonText"></div>
 </div>
 
-<!-- Indicators -->
-<div class="grid" id="indicatorsGrid"></div>
-
-<!-- Log -->
-<div style="font-size:0.8rem;color:var(--text2);">📋 Log Prediksi</div>
-<div class="log-container" id="logContainer">
-    <div style="color:var(--text2);">Menunggu sinyal...</div>
+<div class="grid" id="indicatorsGrid">
+    <div class="ind-card"><div class="ind-name">RSI</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
+    <div class="ind-card"><div class="ind-name">MACD Hist</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
+    <div class="ind-card"><div class="ind-name">SMA 20</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
+    <div class="ind-card"><div class="ind-name">SMA 50</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
+    <div class="ind-card"><div class="ind-name">BB Upper</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
+    <div class="ind-card"><div class="ind-name">BB Lower</div><div class="ind-val">--</div><span class="badge neutral">neutral</span></div>
 </div>
+
+<div style="font-size:0.8rem;color:var(--text2);">📋 Log Prediksi</div>
+<div class="log-container" id="logContainer"><div style="color:var(--text2);">Menunggu sinyal...</div></div>
 
 <script>
 // ========== PWA ==========
 if ('serviceWorker' in navigator) {
-    const sw = `self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)))});`;
-    navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw],{type:'application/javascript'})));
+    navigator.serviceWorker.register(URL.createObjectURL(new Blob([
+        `self.addEventListener('fetch',e=>{e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)))})`
+    ],{type:'application/javascript'})));
 }
 
 // ========== Audio & Notifikasi ==========
@@ -242,8 +241,9 @@ function notify(signal) {
     }
 }
 
-// ========== Data ==========
-let candles = [];
+// ========== Candle Builder from WebSocket ==========
+const candles = []; // array of {time, open, high, low, close, volume}
+let currentCandle = null;
 let currentPrice = null;
 let lastSignal = '';
 const log = [];
@@ -251,45 +251,54 @@ const log = [];
 function addLog(entry) {
     log.unshift({ time: new Date().toLocaleTimeString(), ...entry });
     if (log.length > 50) log.pop();
-    renderLog();
-}
-function renderLog() {
     const c = document.getElementById('logContainer');
     c.innerHTML = log.map(e => `<div class="log-item"><span style="color:var(--gold)">${e.time}</span> <strong>${e.signal}</strong> (UP ${e.up}% / DOWN ${e.down}%)</div>`).join('') || '<div style="color:var(--text2);">Tidak ada sinyal</div>';
 }
 
-// ========== Fetch Binance ==========
-async function fetchKlines() {
-    try {
-        const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=200');
-        const data = await res.json();
-        candles = data.map(k => ({
-            time: k[0],
-            open: +k[1],
-            high: +k[2],
-            low: +k[3],
-            close: +k[4],
-            volume: +k[5]
-        }));
-        currentPrice = candles[candles.length-1].close;
-    } catch(e) {
-        console.error('Gagal fetch Binance:', e);
+function getCurrent5mTimestamp() {
+    const now = Math.floor(Date.now() / 1000);
+    return now - (now % 300); // round down to 5 minutes
+}
+
+function updateCandle(price) {
+    const ts = getCurrent5mTimestamp();
+    if (!currentCandle || currentCandle.time !== ts) {
+        if (currentCandle) {
+            candles.push(currentCandle);
+            if (candles.length > 200) candles.shift();
+        }
+        currentCandle = {
+            time: ts,
+            open: price,
+            high: price,
+            low: price,
+            close: price,
+            volume: 0
+        };
+    } else {
+        if (price > currentCandle.high) currentCandle.high = price;
+        if (price < currentCandle.low) currentCandle.low = price;
+        currentCandle.close = price;
+        currentCandle.volume += 1; // simplified volume counter
     }
 }
 
-// ========== WebSocket ==========
+// WebSocket connection
 let ws;
 function connectWS() {
     if (ws) ws.close();
     ws = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@trade');
     ws.onmessage = (e) => {
         const t = JSON.parse(e.data);
-        if (t.p) { currentPrice = +t.p; updateUI(); }
+        currentPrice = parseFloat(t.p);
+        updateCandle(currentPrice);
+        updateUI();
     };
     ws.onclose = () => setTimeout(connectWS, 3000);
+    ws.onerror = () => ws.close();
 }
 
-// ========== Indikator ==========
+// ========== Technical Indicators ==========
 function SMA(d,p) {
     let o=[];
     for(let i=0;i<d.length;i++) {
@@ -345,7 +354,6 @@ function BB(c,p=20,mult=2) {
     };
 }
 
-// ========== Prediksi 5m ==========
 function predict() {
     if (candles.length < 60) return null;
     const closes = candles.map(c=>c.close);
@@ -359,43 +367,38 @@ function predict() {
     const sma50 = SMA(closes,50);
     const lastSma20 = sma20[sma20.length-1];
     const lastSma50 = sma50[sma50.length-1];
-    
-    // Momentum candle
+
     const candleUp = last > prev;
-    // Volume momentum
     const v5 = vols.slice(-5).reduce((a,b)=>a+b,0)/5;
     const v10 = vols.slice(-10,-5).reduce((a,b)=>a+b,0)/5;
     const volSig = v5 > v10*1.2 ? 'up' : v5 < v10*0.8 ? 'down' : 'neutral';
-    // BB position
     const posBB = last < bb.l ? 'up' : last > bb.u ? 'down' : 'neutral';
-    // Historical up probability
     let upHist = 0;
     for(let i=1;i<closes.length;i++) if(closes[i]>closes[i-1]) upHist++;
     const histUpPct = (upHist/(closes.length-1))*100;
-    
-    // Scoring
+
     let up=0, down=0, total=0;
-    const add = (cond, w, dir) => {
+    const add = (w, dir) => {
         total+=w;
         if(dir==='up') up+=w;
         else if(dir==='down') down+=w;
         else { up+=w*0.5; down+=w*0.5; }
     };
-    add(true, 2, candleUp?'up':'down');
-    add(true, 1.5, rsi.s==='bullish'?'up':rsi.s==='bearish'?'down':'neutral');
-    add(true, 1.5, macd.s==='bullish'?'up':'down');
-    add(true, 1.2, lastSma20>lastSma50?'up':'down');
-    add(true, 1.0, posBB);
-    add(true, 0.8, volSig);
-    add(true, 1.0, histUpPct>55?'up':histUpPct<45?'down':'neutral');
-    
+    add(2, candleUp?'up':'down');
+    add(1.5, rsi.s==='bullish'?'up':rsi.s==='bearish'?'down':'neutral');
+    add(1.5, macd.s==='bullish'?'up':'down');
+    add(1.2, lastSma20>lastSma50?'up':'down');
+    add(1.0, posBB);
+    add(0.8, volSig);
+    add(1.0, histUpPct>55?'up':histUpPct<45?'down':'neutral');
+
     const upPct = Math.round((up/total)*100);
     const downPct = Math.round((down/total)*100);
     let signal = upPct>downPct?'UP ▲':'DOWN ▼';
     if(upPct>=65) signal='UP ▲▲';
     else if(downPct>=65) signal='DOWN ▼▼';
     if(upPct===downPct) signal='NETRAL ⬌';
-    
+
     let reasons = [];
     if(rsi.v>70) reasons.push('RSI overbought');
     if(rsi.v<30) reasons.push('RSI oversold');
@@ -405,17 +408,87 @@ function predict() {
     else reasons.push('Candle turun');
     if(volSig==='up') reasons.push('Volume naik');
     if(reasons.length===0) reasons.push('Campuran sinyal');
-    
+
     return {
         signal, upPct, downPct,
         rsi: rsi.v?.toFixed(2),
         macd: macd.h?.toFixed(2),
-        bbUpper: bb.u?.toFixed(2),
-        bbLower: bb.l?.toFixed(2),
+        bbUp: bb.u?.toFixed(2),
+        bbLow: bb.l?.toFixed(2),
         sma20: lastSma20?.toFixed(2),
         sma50: lastSma50?.toFixed(2),
         reasons: reasons.join(', ')
     };
+}
+
+// ========== UI Update ==========
+function updateUI() {
+    if (!currentPrice) {
+        document.getElementById('priceDisplay').textContent = '--';
+        return;
+    }
+
+    // Price
+    document.getElementById('priceDisplay').textContent = '$' + currentPrice.toLocaleString('en-US',{minimumFractionDigits:2});
+    if (candles.length >= 1) {
+        const lastCandle = candles[candles.length-1];
+        const prevCandle = candles.length>1 ? candles[candles.length-2] : null;
+        if (prevCandle) {
+            const chg = lastCandle.close - prevCandle.close;
+            const pct = (chg/prevCandle.close)*100;
+            document.getElementById('changeDisplay').textContent = (chg>=0?'▲':'▼')+' '+Math.abs(pct).toFixed(2)+'%';
+            document.getElementById('changeDisplay').className = 'change '+(chg>=0?'up':'down');
+        }
+    }
+    document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
+
+    // Prediction
+    if (candles.length < 60) {
+        document.getElementById('predictionText').textContent = 'Mengumpulkan candle... ('+candles.length+'/60)';
+        document.getElementById('probUp').textContent = 'UP: --%';
+        document.getElementById('probDown').textContent = 'DOWN: --%';
+        document.getElementById('fillUp').style.width = '50%';
+        document.getElementById('fillDown').style.width = '50%';
+        document.getElementById('reasonText').textContent = 'Butuh minimal 60 candle 5m';
+        return;
+    }
+
+    const pred = predict();
+    if (!pred) return;
+
+    const prevSignal = document.getElementById('predictionText').textContent;
+    document.getElementById('predictionText').textContent = pred.signal;
+    document.getElementById('predictionText').style.color = pred.signal.includes('UP')?'var(--green)':pred.signal.includes('DOWN')?'var(--red)':'var(--gold)';
+    document.getElementById('probUp').textContent = 'UP: '+pred.upPct+'%';
+    document.getElementById('probDown').textContent = 'DOWN: '+pred.downPct+'%';
+    document.getElementById('fillUp').style.width = pred.upPct+'%';
+    document.getElementById('fillDown').style.width = pred.downPct+'%';
+    document.getElementById('reasonText').textContent = pred.reasons;
+
+    if (prevSignal !== pred.signal && !pred.signal.includes('NETRAL')) {
+        addLog({ signal: pred.signal, up: pred.upPct, down: pred.downPct });
+        notify(pred.signal);
+    }
+
+    // Indicators grid
+    const items = [
+        { n:'RSI', v:pred.rsi, s:parseFloat(pred.rsi)>70?'bearish':parseFloat(pred.rsi)<30?'bullish':'neutral' },
+        { n:'MACD Hist', v:pred.macd, s:parseFloat(pred.macd)>0?'bullish':'bearish' },
+        { n:'SMA 20', v:pred.sma20, s:'neutral' },
+        { n:'SMA 50', v:pred.sma50, s:'neutral' },
+        { n:'BB Upper', v:pred.bbUp, s:'neutral' },
+        { n:'BB Lower', v:pred.bbLow, s:'neutral' }
+    ];
+    const grid = document.getElementById('indicatorsGrid');
+    grid.innerHTML = items.map(i=>`
+        <div class="ind-card">
+            <div class="ind-name">${i.n}</div>
+            <div class="ind-val">${i.v||'--'}</div>
+            <span class="badge ${i.s==='bullish'?'bull':i.s==='bearish'?'bear':'neutral'}">${i.s}</span>
+        </div>
+    `).join('');
+
+    drawChart();
 }
 
 // ========== Mini Chart ==========
@@ -455,74 +528,10 @@ function drawChart() {
     ctx.fillText('$'+min.toFixed(0),32,h-5);
 }
 
-// ========== UI Update ==========
-function updateUI() {
-    if (candles.length === 0) {
-        document.getElementById('predictionText').textContent = 'Menunggu data...';
-        return;
-    }
-    const pred = predict();
-    if (!pred) {
-        document.getElementById('predictionText').textContent = 'Menganalisis...';
-        return;
-    }
-
-    // Price
-    const price = currentPrice || candles[candles.length-1].close;
-    document.getElementById('priceDisplay').textContent = '$' + price.toLocaleString('en-US',{minimumFractionDigits:2});
-    const chg = candles[candles.length-1].close - candles[candles.length-2].close;
-    const pct = (chg/candles[candles.length-2].close)*100;
-    document.getElementById('changeDisplay').textContent = (chg>=0?'▲':'▼')+' '+Math.abs(pct).toFixed(2)+'%';
-    document.getElementById('changeDisplay').className = 'change '+(chg>=0?'up':'down');
-    document.getElementById('updateTime').textContent = new Date().toLocaleTimeString();
-
-    // Prediction
-    const prevSignal = document.getElementById('predictionText').textContent;
-    document.getElementById('predictionText').textContent = pred.signal;
-    document.getElementById('predictionText').style.color = pred.signal.includes('UP')?'var(--green)':pred.signal.includes('DOWN')?'var(--red)':'var(--gold)';
-    document.getElementById('probUp').textContent = 'UP: '+pred.upPct+'%';
-    document.getElementById('probDown').textContent = 'DOWN: '+pred.downPct+'%';
-    document.getElementById('fillUp').style.width = pred.upPct+'%';
-    document.getElementById('fillDown').style.width = pred.downPct+'%';
-    document.getElementById('reasonText').textContent = pred.reasons;
-
-    if (prevSignal !== pred.signal && !pred.signal.includes('NETRAL')) {
-        addLog({ signal: pred.signal, up: pred.upPct, down: pred.downPct });
-        notify(pred.signal);
-    }
-
-    // Indicators grid
-    const grid = document.getElementById('indicatorsGrid');
-    const items = [
-        { n:'RSI', v:pred.rsi, s:parseFloat(pred.rsi)>70?'bearish':parseFloat(pred.rsi)<30?'bullish':'neutral' },
-        { n:'MACD Hist', v:pred.macd, s:parseFloat(pred.macd)>0?'bullish':'bearish' },
-        { n:'SMA 20', v:pred.sma20, s:'neutral' },
-        { n:'SMA 50', v:pred.sma50, s:'neutral' },
-        { n:'BB Upper', v:pred.bbUpper, s:'neutral' },
-        { n:'BB Lower', v:pred.bbLower, s:'neutral' }
-    ];
-    grid.innerHTML = items.map(i=>`
-        <div class="ind-card">
-            <div class="ind-name">${i.n}</div>
-            <div class="ind-val">${i.v}</div>
-            <span class="badge ${i.s==='bullish'?'bull':i.s==='bearish'?'bear':'neutral'}">${i.s}</span>
-        </div>
-    `).join('');
-
-    drawChart();
-}
-
-// ========== Init ==========
-async function init() {
-    await fetchKlines();
-    updateUI();
-    connectWS();
-    setInterval(async ()=>{
-        await fetchKlines();
-        updateUI();
-    }, 30000);
-}
-init();
+// ========== Start ==========
+connectWS();
+// Update UI setiap detik agar tetap responsif
+setInterval(updateUI, 1000);
 </script>
 </body>
 </html>
