@@ -1,1324 +1,1367 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="theme-color" content="#0a0a0f" />
+<title>PolyScan v2.3 — Multi-Source News Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0a0f; --bg-2: #12121a; --panel: #16161f; --panel-2: #1d1d29;
+    --border: #2a2a3a; --text: #e8e8f0; --muted: #8a8a9a; --accent: #d4ff3c;
+    --yes: #4ade80; --no: #f87171; --warn: #fbbf24; --info: #60a5fa; --hot: #ff4d6d;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: 'JetBrains Mono', monospace; font-size: 14px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased; overscroll-behavior: none;
+  }
+  body {
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(212,255,60,0.08), transparent 40%),
+      radial-gradient(circle at 80% 100%, rgba(96,165,250,0.06), transparent 40%);
+    min-height: 100vh;
+  }
+  header {
+    padding: 18px 18px 12px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: rgba(10,10,15,0.92);
+    backdrop-filter: blur(12px); z-index: 100;
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+  .logo { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 800; letter-spacing: -1px; margin: 0; }
+  .logo span { color: var(--accent); }
+  .tag { font-size: 10px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+  .clock-block { text-align: right; font-size: 11px; color: var(--muted); line-height: 1.3; }
+  .clock-utc { color: var(--accent); font-weight: 700; font-size: 14px; letter-spacing: 0.5px; }
+  .clock-local { font-size: 10px; opacity: 0.7; }
+  .clock-status { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .clock-status .syn-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--yes); animation: pulse-soft 2s infinite; }
+  @keyframes pulse-soft { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-// ============================================================
-// BINANCE TRADING BOT — Momentum & Global Market Analysis
-// Real Trading | Android-Ready | Auto Execute Orders
-// ============================================================
+  main { padding: 14px 16px 80px; max-width: 800px; margin: 0 auto; }
 
-const INTERVALS = ["1m", "3m", "5m", "15m", "1h", "4h"];
-const PAIRS = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT", "AVAXUSDT"];
+  .conn-banner {
+    background: var(--panel); border: 1px solid var(--info); border-radius: 12px;
+    padding: 10px 14px; margin-bottom: 14px; font-size: 11px; color: var(--muted);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .conn-banner .ico { font-size: 16px; }
+  .conn-banner b { color: var(--info); }
+  .conn-banner.proxy { border-color: var(--warn); }
+  .conn-banner.proxy b { color: var(--warn); }
+  .conn-banner.ok { border-color: var(--yes); }
+  .conn-banner.ok b { color: var(--yes); }
 
-// ── Utility ──────────────────────────────────────────────────
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const fmt = (n, d = 2) => Number(n).toFixed(d);
-const fmtUSD = (n) => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const ts = () => new Date().toLocaleTimeString("id-ID");
+  .controls { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-bottom: 14px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row + .row { margin-top: 10px; }
+  label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; display: block; margin-bottom: 5px; }
+  select, input {
+    background: var(--bg-2); border: 1px solid var(--border); color: var(--text);
+    padding: 11px 13px; border-radius: 10px; font-family: inherit;
+    font-size: 13px; width: 100%; outline: none;
+  }
+  select:focus, input:focus { border-color: var(--accent); }
+  .field { flex: 1; min-width: 130px; }
 
-// ── Binance REST API ──────────────────────────────────────────
-class BinanceAPI {
-  constructor(apiKey, secretKey, testnet = false) {
-    this.apiKey = apiKey;
-    this.secretKey = secretKey;
-    this.base = testnet
-      ? "https://testnet.binance.vision/api"
-      : "https://api.binance.com/api";
+  .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .toggle {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg-2); padding: 9px 12px; border-radius: 10px;
+    border: 1px solid var(--border); font-size: 12px; cursor: pointer; user-select: none;
+  }
+  .toggle .state { font-size: 10px; letter-spacing: 1.5px; padding: 3px 7px; border-radius: 4px; background: var(--border); color: var(--muted); }
+  .toggle.on { border-color: rgba(212,255,60,0.4); }
+  .toggle.on .state { background: var(--accent); color: #0a0a0f; font-weight: 700; }
+
+  button.primary {
+    background: var(--accent); color: #0a0a0f; border: none; padding: 14px 18px;
+    border-radius: 10px; font-family: 'JetBrains Mono', monospace; font-weight: 700;
+    font-size: 14px; text-transform: uppercase; letter-spacing: 1.5px;
+    width: 100%; cursor: pointer; transition: transform 0.1s, opacity 0.2s;
+  }
+  button.primary:active { transform: scale(0.98); }
+  button.primary:disabled { opacity: 0.5; cursor: wait; }
+  button.secondary {
+    background: var(--bg-2); color: var(--text); border: 1px solid var(--border);
+    padding: 10px; border-radius: 8px; font-family: inherit; font-size: 11px;
+    cursor: pointer; text-transform: uppercase; letter-spacing: 1.5px; flex: 1;
   }
 
-  async sign(params) {
-    const query = new URLSearchParams(params).toString();
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(this.secretKey);
-    const msgData = encoder.encode(query);
-    const cryptoKey = await crypto.subtle.importKey(
-      "raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-    );
-    const sig = await crypto.subtle.sign("HMAC", cryptoKey, msgData);
-    const hex = Array.from(new Uint8Array(sig)).map((b) => b.toString(16).padStart(2, "0")).join("");
-    return query + "&signature=" + hex;
+  .status { font-size: 11px; color: var(--muted); padding: 10px 0 0; min-height: 18px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .status .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .status.working .dot { background: var(--accent); animation: pulse 1s infinite; }
+  .status.done .dot { background: var(--yes); }
+  .status.error .dot { background: var(--no); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .status .next-refresh { margin-left: auto; font-size: 10px; opacity: 0.7; letter-spacing: 1px; }
+
+  .alert-banner {
+    background: linear-gradient(135deg, rgba(255,77,109,0.15), rgba(212,255,60,0.1));
+    border: 1px solid var(--hot); border-radius: 12px; padding: 12px 14px;
+    margin-bottom: 14px; display: none;
+  }
+  .alert-banner.visible { display: block; animation: slide-in 0.3s; }
+  @keyframes slide-in { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  .alert-banner h3 { margin: 0 0 4px; font-size: 12px; color: var(--hot); letter-spacing: 2px; text-transform: uppercase; }
+  .alert-banner ul { margin: 0; padding-left: 18px; font-size: 12px; }
+  .alert-banner li { margin: 2px 0; }
+
+  .market {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px; margin-bottom: 12px; transition: border-color 0.2s; position: relative;
+  }
+  .market.bull { border-color: rgba(74,222,128,0.4); }
+  .market.bear { border-color: rgba(248,113,113,0.4); }
+  .market.hot { border-color: var(--hot); box-shadow: 0 0 0 1px var(--hot), 0 4px 24px rgba(255,77,109,0.15); }
+  .hot-badge {
+    position: absolute; top: -8px; right: 12px; background: var(--hot); color: #fff;
+    font-size: 9px; font-weight: 700; letter-spacing: 2px; padding: 4px 10px;
+    border-radius: 4px; text-transform: uppercase;
   }
 
-  async publicGet(path, params = {}) {
-    const q = new URLSearchParams(params).toString();
-    const r = await fetch(`${this.base}${path}${q ? "?" + q : ""}`);
-    if (!r.ok) throw new Error(`Binance ${r.status}: ${await r.text()}`);
-    return r.json();
+  .market-q { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 600; line-height: 1.3; margin: 0 0 10px; }
+  .meta { display: flex; gap: 10px; font-size: 10px; color: var(--muted); flex-wrap: wrap; margin-bottom: 10px; }
+  .meta span b { color: var(--text); font-weight: 500; }
+  .meta .countdown { color: var(--warn); }
+  .meta .countdown.urgent { color: var(--hot); font-weight: 700; }
+
+  .prices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .price-box { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; position: relative; }
+  .price-box .label-sm { font-size: 10px; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; }
+  .price-box .val { font-size: 22px; font-weight: 700; margin-top: 2px; }
+  .price-box.yes { border-color: rgba(74,222,128,0.3); }
+  .price-box.yes .val { color: var(--yes); }
+  .price-box.no { border-color: rgba(248,113,113,0.3); }
+  .price-box.no .val { color: var(--no); }
+  .price-delta { position: absolute; top: 10px; right: 12px; font-size: 11px; font-weight: 700; }
+  .price-delta.up { color: var(--yes); }
+  .price-delta.down { color: var(--no); }
+
+  .momentum { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 10px; }
+  .mom-cell { background: var(--bg-2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 4px; text-align: center; }
+  .mom-cell .l { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .mom-cell .v { font-size: 12px; font-weight: 700; margin-top: 2px; }
+  .mom-cell.up .v { color: var(--yes); }
+  .mom-cell.down .v { color: var(--no); }
+  .mom-cell.flat .v { color: var(--muted); }
+
+  /* News intelligence panel */
+  .news-intel {
+    background: var(--bg-2); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px;
+    border-left: 3px solid var(--info);
+  }
+  .news-intel.bullish { border-left-color: var(--yes); }
+  .news-intel.bearish { border-left-color: var(--no); }
+  .news-intel.mixed { border-left-color: var(--warn); }
+  .news-intel.empty { border-left-color: var(--muted); }
+
+  .news-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px; font-size: 11px;
+  }
+  .news-header .label { color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; font-size: 10px; }
+  .news-header .badge {
+    font-size: 10px; font-weight: 700; padding: 3px 8px;
+    border-radius: 4px; letter-spacing: 1px;
+  }
+  .news-header .badge.bull { background: rgba(74,222,128,0.2); color: var(--yes); }
+  .news-header .badge.bear { background: rgba(248,113,113,0.2); color: var(--no); }
+  .news-header .badge.mix { background: rgba(251,191,36,0.2); color: var(--warn); }
+  .news-header .badge.none { background: var(--border); color: var(--muted); }
+
+  .news-stats {
+    display: flex; gap: 10px; font-size: 11px; color: var(--muted);
+    margin-bottom: 6px; flex-wrap: wrap;
+  }
+  .news-stats b { color: var(--text); }
+
+  .sources-row {
+    display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+  }
+  .source-chip {
+    font-size: 9px; padding: 2px 6px; border-radius: 3px;
+    background: var(--panel-2); color: var(--muted); letter-spacing: 0.5px;
+  }
+  .source-chip.bull { background: rgba(74,222,128,0.15); color: var(--yes); }
+  .source-chip.bear { background: rgba(248,113,113,0.15); color: var(--no); }
+
+  .news-list { margin-top: 8px; max-height: 0; overflow: hidden; transition: max-height 0.3s; }
+  .news-list.expanded { max-height: 800px; }
+  .news-item {
+    font-size: 11px; color: var(--text); padding: 8px 0; border-top: 1px dashed var(--border);
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .news-item .src-tag {
+    font-size: 9px; background: var(--panel-2); padding: 2px 5px;
+    border-radius: 3px; color: var(--muted); white-space: nowrap;
+    margin-top: 2px; letter-spacing: 0.5px;
+  }
+  .news-item .src-tag.bull { color: var(--yes); }
+  .news-item .src-tag.bear { color: var(--no); }
+  .news-item a { color: var(--text); text-decoration: none; flex: 1; line-height: 1.4; }
+  .news-item .time { font-size: 9px; color: var(--muted); display: block; margin-top: 2px; }
+
+  .news-toggle {
+    width: 100%; background: transparent; color: var(--info); border: none;
+    padding: 6px; font-family: inherit; font-size: 10px; cursor: pointer;
+    text-transform: uppercase; letter-spacing: 1.5px; margin-top: 4px;
   }
 
-  async privateGet(path, params = {}) {
-    params.timestamp = Date.now();
-    params.recvWindow = 5000;
-    const signed = await this.sign(params);
-    const r = await fetch(`${this.base}${path}?${signed}`, {
-      headers: { "X-MBX-APIKEY": this.apiKey },
-    });
-    if (!r.ok) throw new Error(`Binance ${r.status}: ${await r.text()}`);
-    return r.json();
+  .recommendation { background: var(--panel-2); border-radius: 10px; padding: 11px; border-left: 3px solid var(--info); }
+  .recommendation.buy-yes { border-left-color: var(--yes); background: rgba(74,222,128,0.06); }
+  .recommendation.buy-no { border-left-color: var(--no); background: rgba(248,113,113,0.06); }
+  .recommendation.neutral { border-left-color: var(--warn); background: rgba(251,191,36,0.06); }
+
+  .rec-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+  .rec-tag { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 2px; padding: 4px 9px; border-radius: 4px; background: var(--bg); }
+  .rec-tag.buy-yes { color: var(--yes); }
+  .rec-tag.buy-no { color: var(--no); }
+  .rec-tag.neutral { color: var(--warn); }
+
+  .execute-tag { font-size: 10px; font-weight: 700; letter-spacing: 1.5px; padding: 4px 9px; border-radius: 4px; text-transform: uppercase; }
+  .execute-tag.now { background: var(--hot); color: #fff; animation: pulse-glow 1.5s infinite; }
+  .execute-tag.soon { background: var(--warn); color: #0a0a0f; }
+  .execute-tag.wait { background: var(--border); color: var(--muted); }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(255,77,109,0.6); }
+    50% { box-shadow: 0 0 0 6px rgba(255,77,109,0); }
   }
 
-  async privatePost(path, params = {}) {
-    params.timestamp = Date.now();
-    params.recvWindow = 5000;
-    const signed = await this.sign(params);
-    const r = await fetch(`${this.base}${path}`, {
-      method: "POST",
-      headers: {
-        "X-MBX-APIKEY": this.apiKey,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: signed,
-    });
-    if (!r.ok) throw new Error(`Binance ${r.status}: ${await r.text()}`);
-    return r.json();
+  .rec-summary { font-size: 12px; line-height: 1.5; margin-top: 8px; }
+  .rec-summary ul { margin: 6px 0 0; padding-left: 16px; font-size: 11px; color: var(--muted); }
+  .rec-summary li { margin: 1px 0; }
+  .rec-summary b { color: var(--accent); }
+  .rec-summary .signal-bar {
+    height: 4px; background: var(--border); border-radius: 2px;
+    margin: 8px 0; position: relative; overflow: hidden;
+  }
+  .rec-summary .signal-bar .fill {
+    height: 100%; transition: width 0.5s;
   }
 
-  // Public
-  async getKlines(symbol, interval, limit = 100) {
-    return this.publicGet("/v3/klines", { symbol, interval, limit });
+  .entry-exit {
+    margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border);
+    font-size: 11px; display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap;
   }
-  async getTicker(symbol) {
-    return this.publicGet("/v3/ticker/24hr", { symbol });
+  .entry-exit > div { flex: 1; min-width: 90px; }
+  .entry-exit .l { color: var(--muted); font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; }
+  .entry-exit .v { font-weight: 700; }
+  .entry-exit .v.entry { color: var(--accent); }
+  .entry-exit .v.target { color: var(--yes); }
+  .entry-exit .v.stop { color: var(--no); }
+
+  .market-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .market-actions a, .market-actions button {
+    flex: 1; text-align: center; background: var(--bg-2); color: var(--text);
+    text-decoration: none; padding: 9px; border-radius: 8px; border: 1px solid var(--border);
+    font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+    min-width: 90px; cursor: pointer; font-family: inherit;
   }
-  async getAllTickers() {
-    return this.publicGet("/v3/ticker/24hr");
+  .market-actions .watch.on { background: var(--accent); color: #0a0a0f; border-color: var(--accent); font-weight: 700; }
+
+  .empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+  .empty .big { font-family: 'Fraunces', serif; font-size: 60px; opacity: 0.15; line-height: 1; }
+
+  .disclaimer {
+    margin-top: 20px; padding: 12px; font-size: 11px; color: var(--muted);
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; line-height: 1.5;
   }
-  async getOrderBook(symbol, limit = 20) {
-    return this.publicGet("/v3/depth", { symbol, limit });
+  .disclaimer b { color: var(--warn); }
+
+  .toast {
+    position: fixed; bottom: 16px; left: 16px; right: 16px; max-width: 768px;
+    margin: 0 auto; background: var(--panel-2); border: 1px solid var(--accent);
+    border-radius: 12px; padding: 12px 14px; font-size: 12px; z-index: 200;
+    display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.5);
   }
-
-  // Private
-  async getAccount() {
-    return this.privateGet("/v3/account");
+  .toast.visible { display: flex; align-items: center; gap: 10px; animation: slide-up 0.3s; }
+  @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .toast button {
+    background: var(--accent); color: #0a0a0f; border: none; padding: 7px 12px;
+    border-radius: 6px; font-family: inherit; font-size: 11px; font-weight: 700;
+    letter-spacing: 1px; text-transform: uppercase; cursor: pointer;
   }
-  async getOpenOrders(symbol) {
-    return this.privateGet("/v3/openOrders", symbol ? { symbol } : {});
+  .toast .close { background: transparent; color: var(--muted); padding: 4px 8px; }
+
+  .diag-output {
+    background: var(--bg-2); border-radius: 8px; padding: 10px; margin-top: 10px;
+    font-size: 11px; line-height: 1.6; color: var(--muted);
+    white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto;
   }
-  async placeOrder(symbol, side, type, quantity, price = null, stopPrice = null) {
-    const p = { symbol, side, type, quantity };
-    if (type === "LIMIT") {
-      p.timeInForce = "GTC";
-      p.price = price;
-    }
-    if (type === "STOP_LOSS_LIMIT" || type === "TAKE_PROFIT_LIMIT") {
-      p.timeInForce = "GTC";
-      p.price = price;
-      p.stopPrice = stopPrice;
-    }
-    return this.privatePost("/v3/order", p);
-  }
-  async cancelOrder(symbol, orderId) {
-    return this.privateGet("/v3/order/cancel", { symbol, orderId }); // simplified
-  }
-}
+  .diag-output .ok { color: var(--yes); }
+  .diag-output .bad { color: var(--no); }
+  .diag-output .warn { color: var(--warn); }
+</style>
+</head>
+<body>
 
-// ── Technical Indicators ──────────────────────────────────────
-class Indicators {
-  static closes(klines) {
-    return klines.map((k) => parseFloat(k[4]));
-  }
-  static highs(klines) { return klines.map((k) => parseFloat(k[2])); }
-  static lows(klines)  { return klines.map((k) => parseFloat(k[3])); }
-  static volumes(klines) { return klines.map((k) => parseFloat(k[5])); }
-
-  static sma(data, period) {
-    const result = [];
-    for (let i = period - 1; i < data.length; i++) {
-      const slice = data.slice(i - period + 1, i + 1);
-      result.push(slice.reduce((a, b) => a + b, 0) / period);
-    }
-    return result;
-  }
-
-  static ema(data, period) {
-    const k = 2 / (period + 1);
-    const result = [data[0]];
-    for (let i = 1; i < data.length; i++) {
-      result.push(data[i] * k + result[i - 1] * (1 - k));
-    }
-    return result;
-  }
-
-  static rsi(closes, period = 14) {
-    const gains = [], losses = [];
-    for (let i = 1; i < closes.length; i++) {
-      const diff = closes[i] - closes[i - 1];
-      gains.push(diff > 0 ? diff : 0);
-      losses.push(diff < 0 ? -diff : 0);
-    }
-    if (gains.length < period) return null;
-    let avgGain = gains.slice(0, period).reduce((a, b) => a + b) / period;
-    let avgLoss = losses.slice(0, period).reduce((a, b) => a + b) / period;
-    for (let i = period; i < gains.length; i++) {
-      avgGain = (avgGain * (period - 1) + gains[i]) / period;
-      avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
-    }
-    if (avgLoss === 0) return 100;
-    const rs = avgGain / avgLoss;
-    return 100 - 100 / (1 + rs);
-  }
-
-  static macd(closes, fast = 12, slow = 26, signal = 9) {
-    const emaFast = this.ema(closes, fast);
-    const emaSlow = this.ema(closes, slow);
-    const len = Math.min(emaFast.length, emaSlow.length);
-    const macdLine = [];
-    for (let i = 0; i < len; i++) {
-      macdLine.push(emaFast[emaFast.length - len + i] - emaSlow[emaSlow.length - len + i]);
-    }
-    const signalLine = this.ema(macdLine, signal);
-    const histogram = macdLine.slice(-signalLine.length).map((v, i) => v - signalLine[i]);
-    return {
-      macd: macdLine[macdLine.length - 1],
-      signal: signalLine[signalLine.length - 1],
-      histogram: histogram[histogram.length - 1],
-    };
-  }
-
-  static bollinger(closes, period = 20, stdDev = 2) {
-    if (closes.length < period) return null;
-    const slice = closes.slice(-period);
-    const mean = slice.reduce((a, b) => a + b) / period;
-    const variance = slice.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / period;
-    const std = Math.sqrt(variance);
-    return { upper: mean + stdDev * std, middle: mean, lower: mean - stdDev * std, std };
-  }
-
-  static atr(klines, period = 14) {
-    if (klines.length < period + 1) return null;
-    const trs = [];
-    for (let i = 1; i < klines.length; i++) {
-      const high = parseFloat(klines[i][2]);
-      const low = parseFloat(klines[i][3]);
-      const prevClose = parseFloat(klines[i - 1][4]);
-      trs.push(Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose)));
-    }
-    return trs.slice(-period).reduce((a, b) => a + b) / period;
-  }
-
-  static stochastic(klines, kPeriod = 14, dPeriod = 3) {
-    if (klines.length < kPeriod) return null;
-    const kValues = [];
-    for (let i = kPeriod - 1; i < klines.length; i++) {
-      const slice = klines.slice(i - kPeriod + 1, i + 1);
-      const highest = Math.max(...slice.map((k) => parseFloat(k[2])));
-      const lowest = Math.min(...slice.map((k) => parseFloat(k[3])));
-      const close = parseFloat(klines[i][4]);
-      kValues.push(highest === lowest ? 0 : ((close - lowest) / (highest - lowest)) * 100);
-    }
-    const dValue = kValues.slice(-dPeriod).reduce((a, b) => a + b) / dPeriod;
-    return { k: kValues[kValues.length - 1], d: dValue };
-  }
-
-  static volumeMomentum(volumes, period = 20) {
-    if (volumes.length < period) return 1;
-    const avg = volumes.slice(-period - 1, -1).reduce((a, b) => a + b) / period;
-    return avg === 0 ? 1 : volumes[volumes.length - 1] / avg;
-  }
-}
-
-// ── Momentum Signal Engine ────────────────────────────────────
-class MomentumEngine {
-  static analyze(klines, ticker) {
-    const closes = Indicators.closes(klines);
-    const volumes = Indicators.volumes(klines);
-    const price = closes[closes.length - 1];
-
-    const rsi = Indicators.rsi(closes);
-    const macd = Indicators.macd(closes);
-    const bb = Indicators.bollinger(closes);
-    const atr = Indicators.atr(klines);
-    const stoch = Indicators.stochastic(klines);
-    const volMom = Indicators.volumeMomentum(volumes);
-    const ema20 = Indicators.ema(closes, 20);
-    const ema50 = Indicators.ema(closes, 50);
-    const ema200 = Indicators.ema(closes, 200);
-
-    const priceChange24h = parseFloat(ticker?.priceChangePercent || 0);
-    const vol24h = parseFloat(ticker?.quoteVolume || 0);
-
-    let score = 0;
-    const signals = [];
-
-    // RSI Momentum
-    if (rsi !== null) {
-      if (rsi < 30) { score += 3; signals.push({ type: "RSI Oversold", value: fmt(rsi), bullish: true }); }
-      else if (rsi > 70) { score -= 3; signals.push({ type: "RSI Overbought", value: fmt(rsi), bullish: false }); }
-      else if (rsi > 50 && rsi < 65) { score += 1; signals.push({ type: "RSI Bullish Zone", value: fmt(rsi), bullish: true }); }
-      else if (rsi < 50 && rsi > 40) { score -= 1; signals.push({ type: "RSI Bearish Zone", value: fmt(rsi), bullish: false }); }
-    }
-
-    // MACD Momentum
-    if (macd) {
-      if (macd.macd > macd.signal && macd.histogram > 0) {
-        score += macd.histogram > 0 ? 2 : 1;
-        signals.push({ type: "MACD Bullish Cross", value: fmt(macd.histogram, 4), bullish: true });
-      } else if (macd.macd < macd.signal && macd.histogram < 0) {
-        score -= 2;
-        signals.push({ type: "MACD Bearish Cross", value: fmt(macd.histogram, 4), bullish: false });
-      }
-    }
-
-    // Bollinger Bands
-    if (bb) {
-      if (price < bb.lower) { score += 2; signals.push({ type: "BB Lower Band Bounce", value: fmt(price), bullish: true }); }
-      else if (price > bb.upper) { score -= 2; signals.push({ type: "BB Upper Band Rejection", value: fmt(price), bullish: false }); }
-      const bbWidth = (bb.upper - bb.lower) / bb.middle;
-      if (bbWidth < 0.03) signals.push({ type: "BB Squeeze (Breakout Soon)", value: fmt(bbWidth * 100) + "%", bullish: null });
-    }
-
-    // EMA Trend
-    const lastEma20 = ema20[ema20.length - 1];
-    const lastEma50 = ema50.length > 0 ? ema50[ema50.length - 1] : null;
-    const lastEma200 = ema200.length > 0 ? ema200[ema200.length - 1] : null;
-
-    if (lastEma20 && lastEma50) {
-      if (lastEma20 > lastEma50) { score += 1; signals.push({ type: "EMA20 > EMA50 (Uptrend)", value: fmt(lastEma20), bullish: true }); }
-      else { score -= 1; signals.push({ type: "EMA20 < EMA50 (Downtrend)", value: fmt(lastEma20), bullish: false }); }
-    }
-    if (lastEma200 && price > lastEma200) {
-      score += 1; signals.push({ type: "Price > EMA200 (Bull Market)", value: fmt(lastEma200), bullish: true });
-    } else if (lastEma200) {
-      score -= 1; signals.push({ type: "Price < EMA200 (Bear Market)", value: fmt(lastEma200), bullish: false });
-    }
-
-    // Stochastic
-    if (stoch) {
-      if (stoch.k < 20 && stoch.k > stoch.d) { score += 2; signals.push({ type: "Stoch Oversold Cross", value: fmt(stoch.k), bullish: true }); }
-      else if (stoch.k > 80 && stoch.k < stoch.d) { score -= 2; signals.push({ type: "Stoch Overbought Cross", value: fmt(stoch.k), bullish: false }); }
-    }
-
-    // Volume Confirmation
-    if (volMom > 1.5) {
-      const volSignal = score > 0 ? "High Volume Bullish Confirm" : "High Volume Bearish Confirm";
-      score += score > 0 ? 1 : -1;
-      signals.push({ type: volSignal, value: fmt(volMom, 2) + "x", bullish: score > 0 });
-    }
-
-    // 24h Momentum
-    if (Math.abs(priceChange24h) > 3) {
-      if (priceChange24h > 5) { score += 1; signals.push({ type: "Strong 24h Momentum", value: "+" + fmt(priceChange24h) + "%", bullish: true }); }
-      else if (priceChange24h < -5) { score -= 1; signals.push({ type: "Strong 24h Sell Pressure", value: fmt(priceChange24h) + "%", bullish: false }); }
-    }
-
-    const strength = Math.min(Math.abs(score) / 10 * 100, 100);
-    let action = "HOLD";
-    let confidence = "LOW";
-
-    if (score >= 5) { action = "BUY"; confidence = score >= 8 ? "HIGH" : "MEDIUM"; }
-    else if (score <= -5) { action = "SELL"; confidence = score <= -8 ? "HIGH" : "MEDIUM"; }
-    else if (score >= 3) { action = "WEAK_BUY"; confidence = "LOW"; }
-    else if (score <= -3) { action = "WEAK_SELL"; confidence = "LOW"; }
-
-    const stopLoss = atr ? (action.includes("BUY") ? price - atr * 2 : price + atr * 2) : null;
-    const takeProfit = atr ? (action.includes("BUY") ? price + atr * 3 : price - atr * 3) : null;
-
-    return {
-      score, action, confidence, strength, signals,
-      price, rsi, macd, bb, atr, stoch, volMom,
-      stopLoss, takeProfit, priceChange24h, vol24h,
-      ema20: lastEma20, ema50: lastEma50, ema200: lastEma200,
-    };
-  }
-}
-
-// ── Main App ──────────────────────────────────────────────────
-export default function TradingBot() {
-  const [screen, setScreen] = useState("setup"); // setup | dashboard | trading | logs | settings
-  const [apiKey, setApiKey] = useState("");
-  const [secretKey, setSecretKey] = useState("");
-  const [testnet, setTestnet] = useState(false);
-  const [connected, setConnected] = useState(false);
-  const [botRunning, setBotRunning] = useState(false);
-  const [selectedPair, setSelectedPair] = useState("BTCUSDT");
-  const [interval, setInterval_] = useState("15m");
-  const [tradeAmount, setTradeAmount] = useState("10"); // USDT
-  const [riskPercent, setRiskPercent] = useState("1");
-  const [autoTrade, setAutoTrade] = useState(false);
-  const [minConfidence, setMinConfidence] = useState("HIGH");
-  const [analysis, setAnalysis] = useState(null);
-  const [allAnalysis, setAllAnalysis] = useState({});
-  const [account, setAccount] = useState(null);
-  const [logs, setLogs] = useState([]);
-  const [orderHistory, setOrderHistory] = useState([]);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [marketOverview, setMarketOverview] = useState([]);
-  const [showConfirmOrder, setShowConfirmOrder] = useState(null);
-
-  const apiRef = useRef(null);
-  const intervalRef = useRef(null);
-  const logRef = useRef(null);
-
-  const addLog = useCallback((msg, type = "info") => {
-    const entry = { time: ts(), msg, type, id: Date.now() + Math.random() };
-    setLogs((prev) => [entry, ...prev].slice(0, 200));
-  }, []);
-
-  const connectAPI = async () => {
-    if (!apiKey.trim() || !secretKey.trim()) {
-      setError("Masukkan API Key dan Secret Key terlebih dahulu!");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const api = new BinanceAPI(apiKey.trim(), secretKey.trim(), testnet);
-      const acc = await api.getAccount();
-      apiRef.current = api;
-      setAccount(acc);
-      setConnected(true);
-      setScreen("dashboard");
-      addLog("✅ Terhubung ke Binance " + (testnet ? "Testnet" : "Real"), "success");
-    } catch (e) {
-      setError("Gagal konek: " + e.message);
-      addLog("❌ Koneksi gagal: " + e.message, "error");
-    }
-    setLoading(false);
-  };
-
-  const analyze = useCallback(async (pair = selectedPair) => {
-    if (!apiRef.current) return null;
-    try {
-      const [klines, ticker] = await Promise.all([
-        apiRef.current.getKlines(pair, interval, 200),
-        apiRef.current.getTicker(pair),
-      ]);
-      const result = MomentumEngine.analyze(klines, ticker);
-      result.pair = pair;
-      result.ticker = ticker;
-      result.lastUpdate = new Date().toLocaleTimeString("id-ID");
-      return result;
-    } catch (e) {
-      addLog(`⚠️ Gagal analisa ${pair}: ${e.message}`, "warn");
-      return null;
-    }
-  }, [selectedPair, interval, addLog]);
-
-  const runBot = useCallback(async () => {
-    if (!apiRef.current || !botRunning) return;
-    addLog("🔍 Memulai analisa pasar...", "info");
-
-    // Analyze all pairs
-    const results = {};
-    for (const pair of PAIRS) {
-      const r = await analyze(pair);
-      if (r) results[pair] = r;
-      await sleep(200);
-    }
-    setAllAnalysis(results);
-
-    const current = results[selectedPair];
-    if (current) {
-      setAnalysis(current);
-      addLog(`📊 ${selectedPair}: ${current.action} | Score: ${current.score} | Confidence: ${current.confidence}`, 
-        current.action === "BUY" ? "success" : current.action === "SELL" ? "error" : "info");
-    }
-
-    // Auto trade logic
-    if (autoTrade && current) {
-      const shouldTrade =
-        (current.action === "BUY" || current.action === "SELL") &&
-        current.confidence === minConfidence;
-      
-      if (shouldTrade) {
-        await executeOrder(current, true);
-      }
-    }
-
-    // Market overview
-    const overview = Object.values(results)
-      .sort((a, b) => Math.abs(b.score) - Math.abs(a.score))
-      .slice(0, 8);
-    setMarketOverview(overview);
-
-  }, [botRunning, selectedPair, analyze, autoTrade, minConfidence]);
-
-  const executeOrder = async (analysisData, isAuto = false) => {
-    if (!apiRef.current) return;
-    const { action, pair, price, stopLoss, takeProfit, confidence } = analysisData;
-    const side = action === "BUY" ? "BUY" : "SELL";
-    const qty = (parseFloat(tradeAmount) / price).toFixed(6);
-
-    addLog(`${isAuto ? "🤖 AUTO" : "👆 MANUAL"} ORDER: ${side} ${pair} | Qty: ${qty} | Price: ${fmt(price)}`, "info");
-
-    try {
-      const order = await apiRef.current.placeOrder(pair, side, "MARKET", qty);
-      const orderEntry = {
-        id: order.orderId,
-        pair,
-        side,
-        qty,
-        price: fmt(price),
-        sl: stopLoss ? fmt(stopLoss) : "-",
-        tp: takeProfit ? fmt(takeProfit) : "-",
-        time: ts(),
-        status: "FILLED",
-        confidence,
-        auto: isAuto,
-      };
-      setOrderHistory((prev) => [orderEntry, ...prev].slice(0, 100));
-      addLog(`✅ Order berhasil! ID: ${order.orderId} | ${side} ${qty} ${pair}`, "success");
-
-      // Place Stop Loss
-      if (stopLoss) {
-        await sleep(500);
-        try {
-          await apiRef.current.placeOrder(pair, side === "BUY" ? "SELL" : "BUY", "STOP_LOSS_LIMIT", qty,
-            fmt(stopLoss * (side === "BUY" ? 0.999 : 1.001), 2), fmt(stopLoss, 2));
-          addLog(`🛡️ Stop Loss dipasang @ ${fmt(stopLoss)}`, "info");
-        } catch (e) { addLog(`⚠️ SL gagal: ${e.message}`, "warn"); }
-      }
-
-      // Place Take Profit
-      if (takeProfit) {
-        await sleep(500);
-        try {
-          await apiRef.current.placeOrder(pair, side === "BUY" ? "SELL" : "BUY", "TAKE_PROFIT_LIMIT", qty,
-            fmt(takeProfit * (side === "BUY" ? 1.001 : 0.999), 2), fmt(takeProfit, 2));
-          addLog(`🎯 Take Profit dipasang @ ${fmt(takeProfit)}`, "info");
-        } catch (e) { addLog(`⚠️ TP gagal: ${e.message}`, "warn"); }
-      }
-
-      // Refresh account
-      const acc = await apiRef.current.getAccount();
-      setAccount(acc);
-    } catch (e) {
-      addLog(`❌ Order gagal: ${e.message}`, "error");
-    }
-    setShowConfirmOrder(null);
-  };
-
-  const startBot = () => {
-    setBotRunning(true);
-    addLog("🚀 Bot Trading AKTIF", "success");
-  };
-
-  const stopBot = () => {
-    setBotRunning(false);
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    addLog("⏹️ Bot Trading DIHENTIKAN", "warn");
-  };
-
-  useEffect(() => {
-    if (botRunning) {
-      runBot();
-      intervalRef.current = setInterval(runBot, 30000); // every 30s
-    } else {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [botRunning, runBot]);
-
-  const getUSDTBalance = () => {
-    if (!account?.balances) return "0.00";
-    const usdt = account.balances.find((b) => b.asset === "USDT");
-    return usdt ? fmt(parseFloat(usdt.free), 2) : "0.00";
-  };
-
-  const actionColor = (action) => {
-    if (!action) return "#888";
-    if (action.includes("BUY")) return "#00e676";
-    if (action.includes("SELL")) return "#ff5252";
-    return "#ffd740";
-  };
-
-  const scoreBar = (score) => {
-    const pct = Math.min(Math.abs(score) / 10 * 100, 100);
-    const color = score > 0 ? "#00e676" : score < 0 ? "#ff5252" : "#ffd740";
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{ flex: 1, height: 6, background: "#333", borderRadius: 3, overflow: "hidden" }}>
-          <div style={{ width: pct + "%", height: "100%", background: color, borderRadius: 3, transition: "width .3s" }} />
-        </div>
-        <span style={{ color, fontSize: 12, minWidth: 24 }}>{score > 0 ? "+" : ""}{score}</span>
-      </div>
-    );
-  };
-
-  // ── Styles ───────────────────────────────────────────────────
-  const S = {
-    app: {
-      background: "#0a0c10",
-      minHeight: "100vh",
-      fontFamily: "'JetBrains Mono', 'Courier New', monospace",
-      color: "#e0e0e0",
-      maxWidth: 430,
-      margin: "0 auto",
-      paddingBottom: 70,
-    },
-    header: {
-      background: "linear-gradient(135deg, #0d1117 0%, #161b22 100%)",
-      borderBottom: "1px solid #21262d",
-      padding: "12px 16px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      position: "sticky",
-      top: 0,
-      zIndex: 100,
-    },
-    logo: { display: "flex", alignItems: "center", gap: 8 },
-    logoText: { fontSize: 16, fontWeight: 700, color: "#f0b90b", letterSpacing: 1 },
-    statusDot: (active) => ({
-      width: 8, height: 8, borderRadius: "50%",
-      background: active ? "#00e676" : "#ff5252",
-      boxShadow: active ? "0 0 8px #00e676" : "none",
-    }),
-    card: {
-      background: "#161b22",
-      border: "1px solid #21262d",
-      borderRadius: 12,
-      padding: 16,
-      margin: "8px 16px",
-    },
-    cardTitle: { fontSize: 11, color: "#8b949e", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 },
-    bigNum: { fontSize: 28, fontWeight: 700, color: "#f0b90b" },
-    row: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-    label: { fontSize: 12, color: "#8b949e" },
-    value: { fontSize: 12, color: "#e0e0e0", fontWeight: 600 },
-    btn: (color = "#f0b90b", full = false) => ({
-      background: color,
-      color: color === "#f0b90b" ? "#0a0c10" : "#fff",
-      border: "none",
-      borderRadius: 10,
-      padding: "12px 20px",
-      fontSize: 13,
-      fontWeight: 700,
-      fontFamily: "inherit",
-      cursor: "pointer",
-      width: full ? "100%" : "auto",
-      letterSpacing: 0.5,
-      transition: "opacity .2s",
-    }),
-    btnOutline: (color = "#f0b90b") => ({
-      background: "transparent",
-      color: color,
-      border: `1px solid ${color}`,
-      borderRadius: 10,
-      padding: "10px 16px",
-      fontSize: 12,
-      fontWeight: 600,
-      fontFamily: "inherit",
-      cursor: "pointer",
-    }),
-    input: {
-      background: "#0d1117",
-      border: "1px solid #30363d",
-      borderRadius: 8,
-      padding: "10px 12px",
-      color: "#e0e0e0",
-      fontFamily: "inherit",
-      fontSize: 13,
-      width: "100%",
-      boxSizing: "border-box",
-    },
-    select: {
-      background: "#0d1117",
-      border: "1px solid #30363d",
-      borderRadius: 8,
-      padding: "8px 10px",
-      color: "#e0e0e0",
-      fontFamily: "inherit",
-      fontSize: 12,
-      flex: 1,
-    },
-    badge: (color) => ({
-      background: color + "22",
-      color,
-      border: `1px solid ${color}44`,
-      borderRadius: 6,
-      padding: "2px 8px",
-      fontSize: 11,
-      fontWeight: 700,
-    }),
-    navBar: {
-      position: "fixed",
-      bottom: 0,
-      left: "50%",
-      transform: "translateX(-50%)",
-      width: "100%",
-      maxWidth: 430,
-      background: "#161b22",
-      borderTop: "1px solid #21262d",
-      display: "flex",
-      zIndex: 200,
-    },
-    navBtn: (active) => ({
-      flex: 1,
-      padding: "10px 4px",
-      background: "none",
-      border: "none",
-      color: active ? "#f0b90b" : "#8b949e",
-      fontFamily: "inherit",
-      fontSize: 10,
-      cursor: "pointer",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      gap: 2,
-    }),
-    logEntry: (type) => ({
-      padding: "6px 0",
-      borderBottom: "1px solid #1a1f27",
-      fontSize: 11,
-      color: type === "success" ? "#00e676" : type === "error" ? "#ff5252" : type === "warn" ? "#ffd740" : "#8b949e",
-    }),
-    signalRow: (bullish) => ({
-      display: "flex",
-      justifyContent: "space-between",
-      padding: "5px 8px",
-      borderRadius: 6,
-      background: bullish === true ? "#00e67611" : bullish === false ? "#ff525211" : "#ffd74011",
-      marginBottom: 4,
-      fontSize: 11,
-    }),
-    toggle: (on) => ({
-      width: 44,
-      height: 24,
-      borderRadius: 12,
-      background: on ? "#f0b90b" : "#30363d",
-      position: "relative",
-      cursor: "pointer",
-      transition: "background .2s",
-      flexShrink: 0,
-    }),
-    toggleThumb: (on) => ({
-      position: "absolute",
-      top: 2,
-      left: on ? 22 : 2,
-      width: 20,
-      height: 20,
-      borderRadius: "50%",
-      background: "#fff",
-      transition: "left .2s",
-    }),
-  };
-
-  const NavBar = () => (
-    <div style={S.navBar}>
-      {[
-        { id: "dashboard", icon: "📊", label: "Dashboard" },
-        { id: "trading", icon: "⚡", label: "Trading" },
-        { id: "market", icon: "🌐", label: "Pasar" },
-        { id: "logs", icon: "📋", label: "Log" },
-        { id: "settings", icon: "⚙️", label: "Setting" },
-      ].map((n) => (
-        <button key={n.id} style={S.navBtn(screen === n.id)} onClick={() => setScreen(n.id)}>
-          <span style={{ fontSize: 18 }}>{n.icon}</span>
-          {n.label}
-        </button>
-      ))}
+<header>
+  <div class="header-top">
+    <div>
+      <h1 class="logo">Poly<span>Scan</span> <span style="font-size:11px;color:var(--muted);font-family:inherit;font-weight:400">v2.3</span></h1>
+      <div class="tag">Multi-Source News · BBC · CNN · Reuters</div>
     </div>
-  );
+    <div class="clock-block">
+      <div class="clock-utc" id="clockUTC">--:--:--</div>
+      <div class="clock-local" id="clockLocal">Local --:--</div>
+      <div class="clock-status"><span class="syn-dot"></span><span id="syncStatus">Sync...</span></div>
+    </div>
+  </div>
+</header>
 
-  // ── SETUP SCREEN ─────────────────────────────────────────────
-  if (screen === "setup") {
-    return (
-      <div style={S.app}>
-        <div style={{ ...S.header, justifyContent: "center", flexDirection: "column", padding: "20px 16px", gap: 4 }}>
-          <div style={{ fontSize: 32 }}>₿</div>
-          <div style={{ ...S.logoText, fontSize: 20 }}>BINANCE BOT</div>
-          <div style={{ fontSize: 11, color: "#8b949e" }}>Momentum Trading AI</div>
-        </div>
+<main>
+  <div class="conn-banner" id="connBanner">
+    <span class="ico">⏳</span>
+    <div>Mengecek koneksi... <span id="connDetail"></span></div>
+  </div>
 
-        <div style={S.card}>
-          <div style={S.cardTitle}>🔑 API Configuration</div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ ...S.label, marginBottom: 6 }}>API Key</div>
-            <input style={S.input} type="password" placeholder="Masukkan Binance API Key..."
-              value={apiKey} onChange={(e) => setApiKey(e.target.value)} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ ...S.label, marginBottom: 6 }}>Secret Key</div>
-            <input style={S.input} type="password" placeholder="Masukkan Secret Key..."
-              value={secretKey} onChange={(e) => setSecretKey(e.target.value)} />
-          </div>
-          <div style={{ ...S.row, marginBottom: 16 }}>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600 }}>Mode Testnet</div>
-              <div style={{ ...S.label, fontSize: 11 }}>Gunakan akun test (aman)</div>
-            </div>
-            <div style={S.toggle(testnet)} onClick={() => setTestnet(!testnet)}>
-              <div style={S.toggleThumb(testnet)} />
-            </div>
-          </div>
-          {error && <div style={{ color: "#ff5252", fontSize: 12, marginBottom: 12, padding: "8px", background: "#ff525211", borderRadius: 8 }}>{error}</div>}
-          <button style={S.btn("#f0b90b", true)} onClick={connectAPI} disabled={loading}>
-            {loading ? "⏳ Menghubungkan..." : "🔌 CONNECT BINANCE"}
-          </button>
-        </div>
-
-        <div style={S.card}>
-          <div style={S.cardTitle}>📋 Cara Setup</div>
-          {[
-            "1. Buka Binance → Profile → API Management",
-            "2. Buat API Key baru dengan izin Spot Trading",
-            "3. Aktifkan 'Enable Spot & Margin Trading'",
-            "4. Nonaktifkan 'Enable Withdrawals' (keamanan)",
-            "5. Whitelist IP jika perlu",
-            "6. Copy API Key & Secret ke form di atas",
-          ].map((s, i) => (
-            <div key={i} style={{ fontSize: 12, color: "#8b949e", marginBottom: 6 }}>{s}</div>
-          ))}
-        </div>
-
-        <div style={{ ...S.card, background: "#ff525211", border: "1px solid #ff525244" }}>
-          <div style={{ fontSize: 12, color: "#ff5252" }}>
-            ⚠️ <strong>PERINGATAN RISIKO:</strong> Trading crypto mengandung risiko tinggi. Bot ini bukan jaminan profit. Gunakan dengan bijak, mulai dari modal kecil. Developer tidak bertanggung jawab atas kerugian.
-          </div>
-        </div>
+  <div class="controls">
+    <div class="row">
+      <div class="field">
+        <label>Kategori</label>
+        <select id="category">
+          <option value="">Semua</option>
+          <option value="politics">Politik</option>
+          <option value="crypto">Crypto</option>
+          <option value="sports">Olahraga</option>
+          <option value="economy">Ekonomi</option>
+          <option value="geopolitics">Geopolitik</option>
+          <option value="science">Sains/Tech</option>
+        </select>
       </div>
-    );
+      <div class="field">
+        <label>Urutkan</label>
+        <select id="sortby">
+          <option value="volume24hr">Vol 24j</option>
+          <option value="volume">Vol total</option>
+          <option value="liquidity">Likuiditas</option>
+          <option value="competitive">Kompetitif</option>
+          <option value="endDate">Segera tutup</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Jumlah</label>
+        <select id="limit">
+          <option value="3">3 pasar (cepat)</option>
+          <option value="5" selected>5 pasar</option>
+          <option value="10">10 pasar</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Refresh tiap</label>
+        <select id="refreshInterval">
+          <option value="0">Manual</option>
+          <option value="300">5 menit</option>
+          <option value="600" selected>10 menit</option>
+          <option value="1800">30 menit</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Keyword (opsional)</label>
+        <input id="keyword" type="text" placeholder="Bitcoin, Trump, ..." />
+      </div>
+    </div>
+    <div class="toggles">
+      <div class="toggle" id="notifToggle">
+        <span>🔔 Notifikasi Push</span>
+        <span class="state" id="notifState">OFF</span>
+      </div>
+      <div class="toggle" id="soundToggle">
+        <span>🔊 Beep Alert</span>
+        <span class="state" id="soundState">ON</span>
+      </div>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="scanBtn">▶ Scan & Analisa</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="secondary" id="diagBtn">🔧 Test Koneksi</button>
+      <button class="secondary" id="resetProxyBtn">↻ Reset Proxy</button>
+    </div>
+    <div class="status" id="status">
+      <span class="dot"></span>
+      <span id="statusText">Mengecek koneksi...</span>
+      <span class="next-refresh" id="nextRefresh"></span>
+    </div>
+    <div class="diag-output" id="diagOutput" style="display:none"></div>
+  </div>
+
+  <div class="alert-banner" id="alertBanner">
+    <h3>⚡ Sinyal Eksekusi Aktif</h3>
+    <ul id="alertList"></ul>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="empty" id="emptyState">
+    <div class="big">◐</div>
+    <div>Tekan <b style="color:var(--accent)">Scan &amp; Analisa</b> untuk memulai.</div>
+    <div style="margin-top:8px;font-size:11px;opacity:0.7">Bot scan berita dari BBC, CNN, Reuters, AP, Bloomberg, dll untuk konfidensi tinggi.</div>
+  </div>
+
+  <div class="disclaimer">
+    <b>⚠ Disclaimer:</b> Multi-source news analysis bukan jaminan akurasi. Sinyal hanya referensi. <b>Eksekusi tetap di tangan Anda</b>.
+  </div>
+</main>
+
+<div class="toast" id="toast">
+  <span id="toastText" style="flex:1"></span>
+  <button id="toastAction">OK</button>
+  <button class="close" id="toastClose">×</button>
+</div>
+
+<script>
+// ============================================================
+// PolyScan v2.3 — Multi-source news intelligence engine
+// ============================================================
+const GAMMA = "https://gamma-api.polymarket.com";
+const CLOB  = "https://clob.polymarket.com";
+
+const PROXIES = [
+  { name: "codetabs",   build: u => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(u)}`, timeout: 30000 },
+  { name: "allorigins", build: u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,       timeout: 25000 },
+  { name: "corsproxy",  build: u => `https://corsproxy.io/?${encodeURIComponent(u)}`,                    timeout: 15000 }
+];
+
+// ============================================================
+// NEWS SOURCES — RSS feeds dari major outlets
+// Setiap sumber: Google News query yang dibatasi ke domain itu
+// ============================================================
+const NEWS_SOURCES = [
+  { name: "BBC",       domain: "bbc.com",         weight: 1.2 },
+  { name: "Reuters",   domain: "reuters.com",     weight: 1.3 },
+  { name: "CNN",       domain: "cnn.com",         weight: 1.0 },
+  { name: "AP",        domain: "apnews.com",      weight: 1.2 },
+  { name: "Bloomberg", domain: "bloomberg.com",   weight: 1.2 },
+  { name: "Al Jazeera",domain: "aljazeera.com",   weight: 1.0 },
+  { name: "FT",        domain: "ft.com",          weight: 1.1 },
+  { name: "Guardian",  domain: "theguardian.com", weight: 1.0 }
+];
+
+const CATEGORY_TAGS = {
+  politics:   ["politics", "us-politics", "elections"],
+  crypto:     ["crypto", "bitcoin", "ethereum"],
+  sports:     ["sports", "nfl", "nba"],
+  economy:    ["economy", "fed", "macro"],
+  geopolitics:["geopolitics", "middle-east", "ukraine"],
+  science:    ["science", "ai", "tech"]
+};
+
+const $ = id => document.getElementById(id);
+
+const state = {
+  serverTimeOffset: 0, serverTimeSynced: false, lastScanTime: null,
+  refreshTimer: null, countdownTimer: null,
+  marketSnapshots: new Map(), alertedSignals: new Set(),
+  watchlist: new Set(JSON.parse(localStorage.getItem("polyscan_watch") || "[]")),
+  notifEnabled: false, soundEnabled: localStorage.getItem("polyscan_sound") !== "false",
+  audioCtx: null, isLocalFile: false,
+  activeProxy: null, proxyTested: false
+};
+
+// ============================================================
+// MODE / FETCH
+// ============================================================
+function detectLocalMode() {
+  const proto = window.location.protocol;
+  state.isLocalFile = (proto === "file:" || proto === "content:" || proto === "android-content:" || proto === "");
+  return state.isLocalFile;
+}
+
+async function fetchWithTimeout(url, timeout) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal, cache: "no-store" });
+    clearTimeout(t);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r;
+  } catch (e) {
+    clearTimeout(t);
+    if (e.name === "AbortError") throw new Error("timeout");
+    throw e;
+  }
+}
+
+async function smartFetch(url, retries = 1) {
+  if (state.isLocalFile && !state.activeProxy) {
+    state.activeProxy = PROXIES[0];
+    updateConnBanner();
+  }
+  let lastErr;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      if (state.activeProxy) {
+        return await fetchWithTimeout(state.activeProxy.build(url), state.activeProxy.timeout);
+      } else {
+        return await fetchWithTimeout(url, 12000);
+      }
+    } catch (e) { lastErr = e; }
+  }
+  throw lastErr;
+}
+
+async function smartFetchJSON(url, retries = 1) {
+  const r = await smartFetch(url, retries);
+  return r.json();
+}
+
+async function smartFetchText(url, retries = 1) {
+  const r = await smartFetch(url, retries);
+  return r.text();
+}
+
+function updateConnBanner() {
+  const banner = $("connBanner");
+  const detail = $("connDetail");
+  if (state.activeProxy) {
+    banner.className = "conn-banner proxy";
+    banner.querySelector(".ico").textContent = "🔁";
+    detail.innerHTML = `Mode <b>Proxy</b> via ${state.activeProxy.name}`;
+  } else if (state.proxyTested) {
+    banner.className = "conn-banner ok";
+    banner.querySelector(".ico").textContent = "✓";
+    detail.innerHTML = `Mode <b>Direct</b>`;
+  }
+}
+
+async function autoSelectProxy() {
+  if (!state.isLocalFile) {
+    try {
+      await fetchWithTimeout(`${GAMMA}/markets?limit=1`, 5000);
+      state.proxyTested = true;
+      updateConnBanner();
+      setStatus("✓ Koneksi direct OK", "done");
+      return;
+    } catch (e) {}
+  }
+  setStatus("Memilih proxy terbaik...", "working");
+  for (const p of PROXIES) {
+    try {
+      await fetchWithTimeout(p.build(`${GAMMA}/markets?limit=1`), p.timeout);
+      state.activeProxy = p;
+      state.proxyTested = true;
+      updateConnBanner();
+      setStatus(`✓ Pakai ${p.name} — siap scan`, "done");
+      return;
+    } catch (e) { continue; }
+  }
+  state.proxyTested = true;
+  setStatus("⚠ Semua proxy gagal — coba VPN", "error");
+}
+
+// ============================================================
+// CLOCK
+// ============================================================
+async function syncServerTime() {
+  try {
+    const t0 = Date.now();
+    const r = await smartFetch(`${GAMMA}/markets?limit=1`, 0);
+    const t1 = Date.now();
+    const serverDateStr = r.headers.get("date");
+    if (serverDateStr) {
+      state.serverTimeOffset = new Date(serverDateStr).getTime() + (t1 - t0) / 2 - t1;
+      state.serverTimeSynced = true;
+      $("syncStatus").textContent = "Synced UTC";
+    } else $("syncStatus").textContent = "Local time";
+  } catch (e) { state.serverTimeOffset = 0; $("syncStatus").textContent = "Offline"; }
+}
+function nowMs() { return Date.now() + state.serverTimeOffset; }
+function pad(n) { return String(n).padStart(2, "0"); }
+function tickClock() {
+  const d = new Date(nowMs());
+  $("clockUTC").textContent = `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} UTC`;
+  $("clockLocal").textContent = `Local ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// ============================================================
+// POLYMARKET API
+// ============================================================
+function parseStringList(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v;
+  try { return JSON.parse(v); } catch { return []; }
+}
+
+async function fetchMarkets({ category, sortby, limit, keyword }) {
+  const params = new URLSearchParams({
+    active: "true", closed: "false", archived: "false",
+    limit: String(Math.min(parseInt(limit) * 4, 100)),
+    order: sortby, ascending: "false"
+  });
+  if (category && CATEGORY_TAGS[category]) params.append("tag_slug", CATEGORY_TAGS[category][0]);
+  let markets = await smartFetchJSON(`${GAMMA}/markets?${params}`);
+  if (keyword && keyword.trim()) {
+    const k = keyword.trim().toLowerCase();
+    markets = markets.filter(m => (m.question || "").toLowerCase().includes(k) || (m.description || "").toLowerCase().includes(k));
+  }
+  markets = markets.filter(m => {
+    const outs = parseStringList(m.outcomes);
+    return outs.length === 2 && outs.map(o => o.toLowerCase()).includes("yes") && outs.map(o => o.toLowerCase()).includes("no");
+  });
+  return markets.slice(0, parseInt(limit));
+}
+
+async function fetchPriceHistory(tokenId) {
+  try { return (await smartFetchJSON(`${CLOB}/prices-history?market=${tokenId}&interval=1w&fidelity=60`, 0)).history || []; }
+  catch { return []; }
+}
+
+// ============================================================
+// MULTI-SOURCE NEWS INTELLIGENCE
+// ============================================================
+
+// Ekstrak kata kunci penting dari pertanyaan market
+function extractKeywords(question) {
+  // Hapus kata umum
+  const stopwords = new Set(["will","be","is","are","the","a","an","to","of","in","by","on","at","for","with","or","and","than","more","less","over","under","before","after","this","that","there","what","when","who","how","does","do","did","have","has","had","year","week","month","day","2024","2025","2026","2027","reach","get","go","above","below","another","its","it","be"]);
+  const words = question
+    .replace(/[?.,;:!()'"]/g, " ")
+    .split(/\s+/)
+    .filter(w => w.length > 2 && !stopwords.has(w.toLowerCase()));
+
+  // Prioritaskan kata berhuruf besar (proper nouns) dan angka
+  const propers = words.filter(w => /^[A-Z]/.test(w));
+  const numbers = words.filter(w => /\d/.test(w));
+  const others = words.filter(w => !/^[A-Z]/.test(w) && !/\d/.test(w));
+
+  // Gabungkan: maksimal 4-5 keyword
+  const keywords = [...new Set([...propers, ...numbers, ...others.slice(0, 2)])].slice(0, 5);
+  return keywords.join(" ");
+}
+
+// Fetch berita dari satu sumber via Google News RSS dengan site: filter
+async function fetchSourceNews(query, source) {
+  try {
+    const rssQuery = `${query} site:${source.domain}`;
+    const rss = `https://news.google.com/rss/search?q=${encodeURIComponent(rssQuery)}&hl=en-US&gl=US&ceid=US:en`;
+    const proxied = `https://r.jina.ai/${rss}`;
+
+    // Direct fetch (r.jina.ai sudah CORS-friendly)
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 12000);
+    const r = await fetch(proxied, { headers: { "Accept": "text/plain" }, signal: ctrl.signal });
+    clearTimeout(t);
+    if (!r.ok) return [];
+    const text = await r.text();
+
+    const items = [];
+    const lines = text.split("\n");
+    for (let i = 0; i < lines.length && items.length < 3; i++) {
+      const m = lines[i].match(/\[(.+?)\]\((https?:\/\/[^\)]+)\)/);
+      if (m && m[1].length > 20 && !m[2].includes("news.google.com/topics")) {
+        // Coba ekstrak waktu dari context (kadang di baris setelahnya)
+        let timeStr = null;
+        const ctx = lines.slice(i, i + 5).join(" ");
+        const tm = ctx.match(/(\d+)\s+(hour|day|minute|week|month|year)s?\s+ago/i);
+        if (tm) timeStr = `${tm[1]} ${tm[2]}${tm[1] > 1 ? "s" : ""} ago`;
+
+        items.push({ title: m[1], url: m[2], source: source.name, weight: source.weight, timeStr });
+      }
+    }
+    return items;
+  } catch { return []; }
+}
+
+// Aggregator: scan semua sumber paralel
+async function fetchAllNews(question, onProgress) {
+  const query = extractKeywords(question);
+  if (!query) return { items: [], query: "" };
+
+  // Bagi sumber jadi 2 batch supaya tidak overload proxy
+  const batch1 = NEWS_SOURCES.slice(0, 4);
+  const batch2 = NEWS_SOURCES.slice(4);
+
+  const results1 = await Promise.all(batch1.map(async (s, idx) => {
+    const items = await fetchSourceNews(query, s);
+    if (onProgress) onProgress(s.name, items.length);
+    return items;
+  }));
+
+  const results2 = await Promise.all(batch2.map(async (s, idx) => {
+    const items = await fetchSourceNews(query, s);
+    if (onProgress) onProgress(s.name, items.length);
+    return items;
+  }));
+
+  const all = [...results1.flat(), ...results2.flat()];
+
+  // Dedup by URL
+  const seen = new Set();
+  const dedup = [];
+  for (const it of all) {
+    if (!seen.has(it.url)) { seen.add(it.url); dedup.push(it); }
   }
 
-  // ── DASHBOARD ────────────────────────────────────────────────
-  if (screen === "dashboard") {
-    return (
-      <div style={S.app}>
-        <div style={S.header}>
-          <div style={S.logo}>
-            <span style={{ fontSize: 20 }}>₿</span>
-            <span style={S.logoText}>BINANCE BOT</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={S.statusDot(botRunning)} />
-            <span style={{ fontSize: 11, color: botRunning ? "#00e676" : "#ff5252" }}>
-              {botRunning ? "AKTIF" : "STANDBY"}
-            </span>
-          </div>
-        </div>
+  return { items: dedup, query };
+}
 
-        {/* Balance */}
-        <div style={S.card}>
-          <div style={S.cardTitle}>💰 Saldo USDT</div>
-          <div style={S.bigNum}>{fmtUSD(getUSDTBalance())}</div>
-          <div style={{ ...S.label, marginTop: 4 }}>Available for trading</div>
-        </div>
+// ============================================================
+// SENTIMENT SCORING — context-aware
+// ============================================================
+const STRONG_BULL = ["confirmed","approved","passed","ratified","signed","agreed","launched","achieved","record high","all-time high","surged","soared","breakthrough","successful","won","victory","accelerates","historic","milestone"];
+const MILD_BULL   = ["rises","gains","up","positive","optimistic","strong","growing","boost","recovery","progress","support","backed","poised","expected","likely","forecasts","predicts"];
+const STRONG_BEAR = ["rejected","denied","failed","collapsed","crashed","blocked","cancelled","postponed","delayed","banned","plunged","tumbled","disaster","crisis","emergency","investigation","scandal","resignation","dies","killed","attacked"];
+const MILD_BEAR   = ["falls","drops","decline","weak","concerns","worries","slows","missed","disappoints","uncertainty","doubts","warning","risk","threat","challenge","tension"];
 
-        {/* Bot Control */}
-        <div style={S.card}>
-          <div style={S.cardTitle}>🤖 Kontrol Bot</div>
-          <div style={{ ...S.row, marginBottom: 12 }}>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: botRunning ? "#00e676" : "#8b949e" }}>
-                {botRunning ? "🟢 Bot Sedang Berjalan" : "⏹️ Bot Dihentikan"}
-              </div>
-              <div style={{ ...S.label, fontSize: 11 }}>Analisa tiap 30 detik</div>
-            </div>
-            <button
-              style={S.btn(botRunning ? "#ff5252" : "#00e676")}
-              onClick={botRunning ? stopBot : startBot}
-            >
-              {botRunning ? "STOP" : "START"}
-            </button>
-          </div>
-          <div style={S.row}>
-            <div>
-              <div style={{ fontSize: 13 }}>Auto Trade</div>
-              <div style={{ ...S.label, fontSize: 11 }}>Eksekusi order otomatis</div>
-            </div>
-            <div style={S.toggle(autoTrade)} onClick={() => setAutoTrade(!autoTrade)}>
-              <div style={S.toggleThumb(autoTrade)} />
-            </div>
-          </div>
-        </div>
+// Topic-specific signal words
+const TOPIC_SIGNALS = {
+  // Politik / pemilu
+  election: { bull: ["leading","ahead","favorite","frontrunner","poll lead"], bear: ["trailing","behind","loses","defeat"] },
+  // Crypto
+  crypto:   { bull: ["adoption","etf approved","bull run","rally","institutional"], bear: ["sell-off","liquidation","hack","exploit","ban"] },
+  // Konflik / perang
+  conflict: { bull: ["ceasefire","peace deal","truce","withdrawal","negotiation"], bear: ["escalation","invasion","strike","casualties","airstrike"] },
+  // Kesehatan / pandemi
+  health:   { bull: ["contained","cured","vaccine","recovery","decline"], bear: ["outbreak","spread","mutation","death","quarantine"] }
+};
 
-        {/* Current Analysis */}
-        {analysis && (
-          <div style={S.card}>
-            <div style={S.cardTitle}>📊 Sinyal Terkini — {analysis.pair}</div>
-            <div style={{ ...S.row, marginBottom: 8 }}>
-              <div>
-                <span style={S.badge(actionColor(analysis.action))}>{analysis.action}</span>
-                {" "}
-                <span style={S.badge(analysis.confidence === "HIGH" ? "#00e676" : analysis.confidence === "MEDIUM" ? "#ffd740" : "#8b949e")}>
-                  {analysis.confidence}
-                </span>
-              </div>
-              <div style={{ fontSize: 13, color: "#f0b90b", fontWeight: 700 }}>
-                {fmtUSD(analysis.price)}
-              </div>
-            </div>
-            {scoreBar(analysis.score)}
-            <div style={{ ...S.row, marginTop: 8 }}>
-              <div style={S.label}>RSI</div>
-              <div style={{ ...S.value, color: analysis.rsi < 30 ? "#00e676" : analysis.rsi > 70 ? "#ff5252" : "#e0e0e0" }}>
-                {analysis.rsi ? fmt(analysis.rsi) : "-"}
-              </div>
-            </div>
-            <div style={S.row}>
-              <div style={S.label}>24h Change</div>
-              <div style={{ ...S.value, color: analysis.priceChange24h > 0 ? "#00e676" : "#ff5252" }}>
-                {analysis.priceChange24h > 0 ? "+" : ""}{fmt(analysis.priceChange24h)}%
-              </div>
-            </div>
-            <div style={S.row}>
-              <div style={S.label}>Update</div>
-              <div style={S.value}>{analysis.lastUpdate}</div>
-            </div>
-            {!autoTrade && (analysis.action === "BUY" || analysis.action === "SELL") && (
-              <button
-                style={{ ...S.btn(actionColor(analysis.action), true), marginTop: 8 }}
-                onClick={() => setShowConfirmOrder(analysis)}
-              >
-                {analysis.action} {analysis.pair} SEKARANG
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Top Opportunities */}
-        {marketOverview.length > 0 && (
-          <div style={S.card}>
-            <div style={S.cardTitle}>🌐 Peluang Terbaik</div>
-            {marketOverview.slice(0, 5).map((r) => (
-              <div key={r.pair} style={{ ...S.row, padding: "6px 0", borderBottom: "1px solid #21262d" }}
-                onClick={() => { setSelectedPair(r.pair); setAnalysis(r); }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{r.pair}</div>
-                  <div style={{ ...S.label, fontSize: 11 }}>{scoreBar(r.score)}</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <span style={S.badge(actionColor(r.action))}>{r.action}</span>
-                  <div style={{ ...S.value, fontSize: 11, marginTop: 2 }}>{fmtUSD(r.price)}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Recent Orders */}
-        {orderHistory.length > 0 && (
-          <div style={S.card}>
-            <div style={S.cardTitle}>📜 Order Terakhir</div>
-            {orderHistory.slice(0, 3).map((o) => (
-              <div key={o.id} style={{ ...S.row, padding: "6px 0", borderBottom: "1px solid #21262d" }}>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600 }}>{o.side} {o.pair}</div>
-                  <div style={{ ...S.label, fontSize: 10 }}>{o.time} {o.auto ? "🤖" : "👆"}</div>
-                </div>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ ...S.value, fontSize: 11 }}>${o.price}</div>
-                  <div style={{ ...S.label, fontSize: 10 }}>Qty: {o.qty}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <NavBar />
-
-        {/* Confirm Order Modal */}
-        {showConfirmOrder && (
-          <div style={{
-            position: "fixed", inset: 0, background: "#000000bb", zIndex: 300,
-            display: "flex", alignItems: "flex-end",
-          }}>
-            <div style={{
-              background: "#161b22", borderRadius: "16px 16px 0 0",
-              padding: 20, width: "100%", maxWidth: 430, margin: "0 auto",
-              border: "1px solid #21262d",
-            }}>
-              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>
-                Konfirmasi Order
-              </div>
-              <div style={{ ...S.row }}>
-                <div style={S.label}>Pair</div>
-                <div style={{ ...S.value, color: "#f0b90b" }}>{showConfirmOrder.pair}</div>
-              </div>
-              <div style={S.row}>
-                <div style={S.label}>Action</div>
-                <span style={S.badge(actionColor(showConfirmOrder.action))}>{showConfirmOrder.action}</span>
-              </div>
-              <div style={S.row}>
-                <div style={S.label}>Harga Market</div>
-                <div style={S.value}>{fmtUSD(showConfirmOrder.price)}</div>
-              </div>
-              <div style={S.row}>
-                <div style={S.label}>Jumlah</div>
-                <div style={S.value}>${tradeAmount} USDT</div>
-              </div>
-              <div style={S.row}>
-                <div style={S.label}>Stop Loss</div>
-                <div style={{ ...S.value, color: "#ff5252" }}>
-                  {showConfirmOrder.stopLoss ? fmtUSD(showConfirmOrder.stopLoss) : "-"}
-                </div>
-              </div>
-              <div style={{ ...S.row, marginBottom: 16 }}>
-                <div style={S.label}>Take Profit</div>
-                <div style={{ ...S.value, color: "#00e676" }}>
-                  {showConfirmOrder.takeProfit ? fmtUSD(showConfirmOrder.takeProfit) : "-"}
-                </div>
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button style={{ ...S.btnOutline("#8b949e"), flex: 1 }} onClick={() => setShowConfirmOrder(null)}>Batal</button>
-                <button style={{ ...S.btn(actionColor(showConfirmOrder.action), false), flex: 2 }}
-                  onClick={() => executeOrder(showConfirmOrder, false)}>
-                  KONFIRMASI {showConfirmOrder.action}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ── TRADING SCREEN ───────────────────────────────────────────
-  if (screen === "trading") {
-    return (
-      <div style={S.app}>
-        <div style={S.header}>
-          <span style={S.logoText}>⚡ TRADING</span>
-          <span style={{ fontSize: 12, color: "#f0b90b" }}>{selectedPair}</span>
-        </div>
-
-        <div style={S.card}>
-          <div style={S.cardTitle}>🎯 Pilih Pair & Interval</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
-            {PAIRS.map((p) => {
-              const r = allAnalysis[p];
-              return (
-                <button key={p}
-                  style={{
-                    background: selectedPair === p ? "#f0b90b22" : "#0d1117",
-                    border: `1px solid ${selectedPair === p ? "#f0b90b" : "#30363d"}`,
-                    borderRadius: 8, padding: "8px 6px", cursor: "pointer",
-                    color: selectedPair === p ? "#f0b90b" : "#e0e0e0",
-                    fontFamily: "inherit", fontSize: 11, textAlign: "left",
-                  }}
-                  onClick={() => { setSelectedPair(p); if (r) setAnalysis(r); }}
-                >
-                  <div style={{ fontWeight: 700, fontSize: 12 }}>{p.replace("USDT", "")}</div>
-                  {r && <div style={{ color: actionColor(r.action), fontSize: 10 }}>{r.action}</div>}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {INTERVALS.map((iv) => (
-              <button key={iv}
-                style={{
-                  background: interval === iv ? "#f0b90b" : "#0d1117",
-                  border: `1px solid ${interval === iv ? "#f0b90b" : "#30363d"}`,
-                  borderRadius: 6, padding: "4px 10px", cursor: "pointer",
-                  color: interval === iv ? "#0a0c10" : "#e0e0e0",
-                  fontFamily: "inherit", fontSize: 11, fontWeight: interval === iv ? 700 : 400,
-                }}
-                onClick={() => setInterval_(iv)}
-              >
-                {iv}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {analysis && (
-          <>
-            <div style={S.card}>
-              <div style={S.cardTitle}>📈 Analisa Teknikal — {selectedPair}</div>
-              <div style={{ textAlign: "center", marginBottom: 12 }}>
-                <span style={{
-                  fontSize: 24, fontWeight: 800, color: actionColor(analysis.action),
-                  textShadow: `0 0 20px ${actionColor(analysis.action)}66`
-                }}>
-                  {analysis.action}
-                </span>
-                {" "}
-                <span style={{ fontSize: 14, color: "#8b949e" }}>— {analysis.confidence}</span>
-              </div>
-              {scoreBar(analysis.score)}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 12 }}>
-                {[
-                  ["Harga", fmtUSD(analysis.price)],
-                  ["RSI (14)", analysis.rsi ? fmt(analysis.rsi) : "-"],
-                  ["MACD", analysis.macd ? (analysis.macd.macd > 0 ? "↗ Bullish" : "↘ Bearish") : "-"],
-                  ["EMA20", analysis.ema20 ? fmt(analysis.ema20) : "-"],
-                  ["BB Upper", analysis.bb ? fmt(analysis.bb.upper) : "-"],
-                  ["BB Lower", analysis.bb ? fmt(analysis.bb.lower) : "-"],
-                  ["ATR (14)", analysis.atr ? fmt(analysis.atr) : "-"],
-                  ["Vol Ratio", analysis.volMom ? fmt(analysis.volMom, 2) + "x" : "-"],
-                  ["Stoch %K", analysis.stoch ? fmt(analysis.stoch.k) : "-"],
-                  ["24h", (analysis.priceChange24h > 0 ? "+" : "") + fmt(analysis.priceChange24h) + "%"],
-                  ["Stop Loss", analysis.stopLoss ? fmtUSD(analysis.stopLoss) : "-"],
-                  ["Take Profit", analysis.takeProfit ? fmtUSD(analysis.takeProfit) : "-"],
-                ].map(([k, v]) => (
-                  <div key={k} style={{ background: "#0d1117", borderRadius: 8, padding: "8px 10px" }}>
-                    <div style={{ ...S.label, fontSize: 10 }}>{k}</div>
-                    <div style={{ ...S.value, fontSize: 12 }}>{v}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={S.card}>
-              <div style={S.cardTitle}>🔔 Sinyal Aktif</div>
-              {analysis.signals.map((sig, i) => (
-                <div key={i} style={S.signalRow(sig.bullish)}>
-                  <span>{sig.bullish === true ? "▲" : sig.bullish === false ? "▼" : "◆"} {sig.type}</span>
-                  <span style={{ fontWeight: 700 }}>{sig.value}</span>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ margin: "0 16px 8px", display: "flex", gap: 8 }}>
-              <button style={{ ...S.btn("#00e676", false), flex: 1 }}
-                onClick={() => setShowConfirmOrder({ ...analysis, action: "BUY" })}>
-                BUY
-              </button>
-              <button
-                style={{ ...S.btn("#21262d"), flex: 1 }}
-                onClick={async () => {
-                  setLoading(true);
-                  const r = await analyze(selectedPair);
-                  if (r) setAnalysis(r);
-                  setLoading(false);
-                  addLog(`🔄 Manual analisa ${selectedPair}`, "info");
-                }}>
-                {loading ? "⏳" : "🔄 ANALISA"}
-              </button>
-              <button style={{ ...S.btn("#ff5252", false), flex: 1 }}
-                onClick={() => setShowConfirmOrder({ ...analysis, action: "SELL" })}>
-                SELL
-              </button>
-            </div>
-          </>
-        )}
-
-        {!analysis && (
-          <div style={{ ...S.card, textAlign: "center" }}>
-            <div style={{ fontSize: 48, marginBottom: 8 }}>📊</div>
-            <div style={{ color: "#8b949e" }}>Klik tombol Analisa untuk mulai</div>
-            <button style={{ ...S.btn("#f0b90b", true), marginTop: 12 }}
-              onClick={async () => {
-                setLoading(true);
-                const r = await analyze(selectedPair);
-                if (r) setAnalysis(r);
-                setLoading(false);
-              }}>
-              {loading ? "⏳ Menganalisa..." : "🔍 MULAI ANALISA"}
-            </button>
-          </div>
-        )}
-
-        <NavBar />
-
-        {showConfirmOrder && (
-          <div style={{ position: "fixed", inset: 0, background: "#000000bb", zIndex: 300, display: "flex", alignItems: "flex-end" }}>
-            <div style={{ background: "#161b22", borderRadius: "16px 16px 0 0", padding: 20, width: "100%", maxWidth: 430, margin: "0 auto", border: "1px solid #21262d" }}>
-              <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 12, textAlign: "center" }}>
-                Konfirmasi {showConfirmOrder.action}
-              </div>
-              {[
-                ["Pair", showConfirmOrder.pair],
-                ["Harga Market", fmtUSD(showConfirmOrder.price)],
-                ["Jumlah Trade", `$${tradeAmount} USDT`],
-                ["Stop Loss", showConfirmOrder.stopLoss ? fmtUSD(showConfirmOrder.stopLoss) : "—"],
-                ["Take Profit", showConfirmOrder.takeProfit ? fmtUSD(showConfirmOrder.takeProfit) : "—"],
-              ].map(([k, v]) => (
-                <div key={k} style={{ ...S.row, padding: "4px 0" }}>
-                  <div style={S.label}>{k}</div>
-                  <div style={S.value}>{v}</div>
-                </div>
-              ))}
-              <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-                <button style={{ ...S.btnOutline("#8b949e"), flex: 1 }} onClick={() => setShowConfirmOrder(null)}>Batal</button>
-                <button style={{ ...S.btn(actionColor(showConfirmOrder.action)), flex: 2 }}
-                  onClick={() => executeOrder(showConfirmOrder, false)}>
-                  EKSEKUSI {showConfirmOrder.action}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // ── MARKET SCREEN ────────────────────────────────────────────
-  if (screen === "market") {
-    return (
-      <div style={S.app}>
-        <div style={S.header}>
-          <span style={S.logoText}>🌐 PASAR GLOBAL</span>
-          <button style={S.btnOutline("#f0b90b")} onClick={async () => {
-            setLoading(true);
-            addLog("🌐 Scan pasar global...", "info");
-            const results = {};
-            for (const pair of PAIRS) {
-              const r = await analyze(pair);
-              if (r) results[pair] = r;
-              await sleep(200);
-            }
-            setAllAnalysis(results);
-            setMarketOverview(Object.values(results).sort((a, b) => Math.abs(b.score) - Math.abs(a.score)));
-            setLoading(false);
-            addLog("✅ Scan selesai", "success");
-          }}>{loading ? "⏳" : "🔄 Scan"}</button>
-        </div>
-
-        {Object.values(allAnalysis).length === 0 && (
-          <div style={{ ...S.card, textAlign: "center" }}>
-            <div style={{ fontSize: 48 }}>🌐</div>
-            <div style={{ color: "#8b949e", marginBottom: 12 }}>Klik Scan untuk analisa semua pair</div>
-          </div>
-        )}
-
-        {Object.values(allAnalysis).sort((a, b) => Math.abs(b.score) - Math.abs(a.score)).map((r) => (
-          <div key={r.pair} style={{ ...S.card, cursor: "pointer" }}
-            onClick={() => { setSelectedPair(r.pair); setAnalysis(r); setScreen("trading"); }}>
-            <div style={S.row}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 700 }}>{r.pair}</div>
-                <div style={{ ...S.label, fontSize: 10 }}>Update: {r.lastUpdate}</div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 14, color: "#f0b90b", fontWeight: 700 }}>{fmtUSD(r.price)}</div>
-                <div style={{ color: r.priceChange24h > 0 ? "#00e676" : "#ff5252", fontSize: 11 }}>
-                  {r.priceChange24h > 0 ? "▲" : "▼"} {fmt(Math.abs(r.priceChange24h))}%
-                </div>
-              </div>
-            </div>
-            <div style={{ ...S.row, marginTop: 6 }}>
-              <span style={S.badge(actionColor(r.action))}>{r.action}</span>
-              <span style={S.badge(r.confidence === "HIGH" ? "#00e676" : r.confidence === "MEDIUM" ? "#ffd740" : "#8b949e")}>
-                {r.confidence}
-              </span>
-            </div>
-            <div style={{ marginTop: 6 }}>{scoreBar(r.score)}</div>
-          </div>
-        ))}
-
-        <NavBar />
-      </div>
-    );
-  }
-
-  // ── LOGS SCREEN ──────────────────────────────────────────────
-  if (screen === "logs") {
-    return (
-      <div style={S.app}>
-        <div style={S.header}>
-          <span style={S.logoText}>📋 LOG AKTIVITAS</span>
-          <button style={S.btnOutline("#ff5252")} onClick={() => setLogs([])}>Hapus</button>
-        </div>
-
-        <div style={{ ...S.card, marginBottom: 8 }}>
-          <div style={S.cardTitle}>📜 Riwayat Order ({orderHistory.length})</div>
-          {orderHistory.length === 0 && <div style={{ color: "#8b949e", fontSize: 12 }}>Belum ada order</div>}
-          {orderHistory.slice(0, 10).map((o) => (
-            <div key={o.id} style={{ padding: "8px 0", borderBottom: "1px solid #21262d" }}>
-              <div style={{ ...S.row }}>
-                <span style={S.badge(o.side === "BUY" ? "#00e676" : "#ff5252")}>{o.side}</span>
-                <span style={{ fontSize: 12, color: "#f0b90b", fontWeight: 700 }}>{o.pair}</span>
-                <span style={{ fontSize: 11, color: "#8b949e" }}>{o.time}</span>
-              </div>
-              <div style={{ ...S.row, marginTop: 4 }}>
-                <div style={{ fontSize: 11, color: "#8b949e" }}>Harga: ${o.price}</div>
-                <div style={{ fontSize: 11, color: "#8b949e" }}>Qty: {o.qty}</div>
-                <div style={{ fontSize: 11, color: "#8b949e" }}>{o.auto ? "🤖 Auto" : "👆 Manual"}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div style={S.card}>
-          <div style={S.cardTitle}>🗒️ Log Sistem ({logs.length})</div>
-          <div style={{ maxHeight: 400, overflowY: "auto" }} ref={logRef}>
-            {logs.length === 0 && <div style={{ color: "#8b949e", fontSize: 12 }}>Belum ada log</div>}
-            {logs.map((l) => (
-              <div key={l.id} style={S.logEntry(l.type)}>
-                <span style={{ color: "#30363d" }}>{l.time}</span> {l.msg}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <NavBar />
-      </div>
-    );
-  }
-
-  // ── SETTINGS SCREEN ──────────────────────────────────────────
-  if (screen === "settings") {
-    return (
-      <div style={S.app}>
-        <div style={S.header}>
-          <span style={S.logoText}>⚙️ PENGATURAN</span>
-        </div>
-
-        <div style={S.card}>
-          <div style={S.cardTitle}>💰 Parameter Trading</div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ ...S.label, marginBottom: 6 }}>Jumlah per Trade (USDT)</div>
-            <input style={S.input} type="number" value={tradeAmount} onChange={(e) => setTradeAmount(e.target.value)} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ ...S.label, marginBottom: 6 }}>Risk per Trade (%)</div>
-            <input style={S.input} type="number" value={riskPercent} onChange={(e) => setRiskPercent(e.target.value)} />
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <div style={{ ...S.label, marginBottom: 6 }}>Confidence Minimum untuk Auto Trade</div>
-            <select style={S.select} value={minConfidence} onChange={(e) => setMinConfidence(e.target.value)}>
-              <option value="HIGH">HIGH (Paling Aman)</option>
-              <option value="MEDIUM">MEDIUM (Lebih Agresif)</option>
-            </select>
-          </div>
-        </div>
-
-        <div style={S.card}>
-          <div style={S.cardTitle}>🔄 Interval Default</div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            {INTERVALS.map((iv) => (
-              <button key={iv}
-                style={{
-                  background: interval === iv ? "#f0b90b" : "#0d1117",
-                  border: `1px solid ${interval === iv ? "#f0b90b" : "#30363d"}`,
-                  borderRadius: 6, padding: "6px 12px", cursor: "pointer",
-                  color: interval === iv ? "#0a0c10" : "#e0e0e0",
-                  fontFamily: "inherit", fontSize: 12, fontWeight: interval === iv ? 700 : 400,
-                }}
-                onClick={() => setInterval_(iv)}>
-                {iv}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div style={S.card}>
-          <div style={S.cardTitle}>🔑 Status Koneksi</div>
-          <div style={S.row}>
-            <div style={S.label}>Mode</div>
-            <span style={S.badge(testnet ? "#ffd740" : "#00e676")}>{testnet ? "TESTNET" : "REAL TRADING"}</span>
-          </div>
-          <div style={{ ...S.row }}>
-            <div style={S.label}>Status</div>
-            <span style={S.badge(connected ? "#00e676" : "#ff5252")}>{connected ? "TERHUBUNG" : "TERPUTUS"}</span>
-          </div>
-          <div style={{ ...S.row }}>
-            <div style={S.label}>Saldo USDT</div>
-            <div style={{ ...S.value, color: "#f0b90b" }}>{fmtUSD(getUSDTBalance())}</div>
-          </div>
-          <button style={{ ...S.btnOutline("#ff5252"), width: "100%", marginTop: 12 }}
-            onClick={() => { setConnected(false); setScreen("setup"); setBotRunning(false); apiRef.current = null; addLog("🔌 Disconnected", "warn"); }}>
-            🔌 Disconnect & Reset
-          </button>
-        </div>
-
-        <div style={{ ...S.card, background: "#0d1117" }}>
-          <div style={S.cardTitle}>📖 Tentang Bot</div>
-          <div style={{ fontSize: 11, color: "#8b949e", lineHeight: 1.8 }}>
-            <div>🤖 <strong style={{ color: "#f0b90b" }}>Binance Momentum Bot</strong></div>
-            <div>Indikator: RSI, MACD, Bollinger Bands, EMA 20/50/200, Stochastic, ATR, Volume</div>
-            <div>Fitur: Auto SL/TP, Multi-pair scan, Momentum scoring</div>
-            <div>Trading interval: 30 detik (auto scan)</div>
-            <div style={{ marginTop: 8, color: "#ff525288" }}>⚠️ Gunakan dengan bijak. Mulai dari modal kecil.</div>
-          </div>
-        </div>
-
-        <NavBar />
-      </div>
-    );
-  }
-
+function detectTopic(question) {
+  const q = question.toLowerCase();
+  if (q.match(/elect|vot|president|primary|polls?|nomine/)) return "election";
+  if (q.match(/bitcoin|crypto|btc|eth|coin|token|defi/)) return "crypto";
+  if (q.match(/war|invasion|ukraine|israel|gaza|iran|russia|strike|conflict|ceasefire/)) return "conflict";
+  if (q.match(/pandemic|virus|outbreak|disease|covid|flu|cases/)) return "health";
   return null;
 }
+
+// Skor satu item berita
+function scoreItem(item, topic) {
+  const t = (item.title || "").toLowerCase();
+  let score = 0;
+  let hits = { bull: [], bear: [] };
+
+  for (const w of STRONG_BULL) if (t.includes(w)) { score += 2; hits.bull.push(w); }
+  for (const w of MILD_BULL)   if (t.includes(w)) { score += 1; hits.bull.push(w); }
+  for (const w of STRONG_BEAR) if (t.includes(w)) { score -= 2; hits.bear.push(w); }
+  for (const w of MILD_BEAR)   if (t.includes(w)) { score -= 1; hits.bear.push(w); }
+
+  if (topic && TOPIC_SIGNALS[topic]) {
+    for (const w of TOPIC_SIGNALS[topic].bull) if (t.includes(w)) { score += 2; hits.bull.push(w); }
+    for (const w of TOPIC_SIGNALS[topic].bear) if (t.includes(w)) { score -= 2; hits.bear.push(w); }
+  }
+
+  // Bobot recency: berita "hours ago" lebih relevan dari "weeks ago"
+  let recencyMult = 1.0;
+  if (item.timeStr) {
+    if (item.timeStr.match(/hour|minute/i))     recencyMult = 3.0;
+    else if (item.timeStr.match(/^1 day/i))     recencyMult = 2.0;
+    else if (item.timeStr.match(/day/i))        recencyMult = 1.5;
+    else if (item.timeStr.match(/week/i))       recencyMult = 0.8;
+    else if (item.timeStr.match(/month|year/i)) recencyMult = 0.3;
+  }
+
+  return { score: score * (item.weight || 1) * recencyMult, hits, recencyMult };
+}
+
+// Aggregate scoring untuk semua berita
+function analyzeNews(newsResult, question) {
+  const items = newsResult.items;
+  if (!items.length) {
+    return { totalScore: 0, sentiment: "none", confidence: 0, items: [], sourceBreakdown: {}, query: newsResult.query };
+  }
+
+  const topic = detectTopic(question);
+  const sourceBreakdown = {};
+  let totalScore = 0;
+  let bullCount = 0, bearCount = 0, neutralCount = 0;
+  const scoredItems = [];
+
+  for (const item of items) {
+    const s = scoreItem(item, topic);
+    scoredItems.push({ ...item, ...s });
+    totalScore += s.score;
+    if (s.score > 0.5) bullCount++;
+    else if (s.score < -0.5) bearCount++;
+    else neutralCount++;
+
+    if (!sourceBreakdown[item.source]) sourceBreakdown[item.source] = { score: 0, count: 0 };
+    sourceBreakdown[item.source].score += s.score;
+    sourceBreakdown[item.source].count++;
+  }
+
+  // Konsensus: berapa sumber unik yang sepakat?
+  const sources = Object.keys(sourceBreakdown);
+  const bullSources = sources.filter(s => sourceBreakdown[s].score > 0.5).length;
+  const bearSources = sources.filter(s => sourceBreakdown[s].score < -0.5).length;
+
+  // Sentimen overall
+  let sentiment = "mixed";
+  if (totalScore >= 3 && bullCount > bearCount) sentiment = "bullish";
+  else if (totalScore <= -3 && bearCount > bullCount) sentiment = "bearish";
+  else if (Math.abs(totalScore) < 2) sentiment = "mixed";
+
+  // Konfidensi = volume + konsensus
+  // Lebih banyak sumber unik sepakat = konfidensi tinggi
+  let confidence = 0;
+  const totalSources = bullSources + bearSources;
+  if (sentiment === "bullish") {
+    confidence = (bullSources / Math.max(sources.length, 1)) * Math.min(items.length / 4, 1);
+  } else if (sentiment === "bearish") {
+    confidence = (bearSources / Math.max(sources.length, 1)) * Math.min(items.length / 4, 1);
+  }
+  confidence = Math.min(confidence, 1.0);
+
+  return {
+    totalScore, sentiment, confidence,
+    items: scoredItems.sort((a,b) => Math.abs(b.score) - Math.abs(a.score)),
+    bullCount, bearCount, neutralCount,
+    sourceBreakdown, bullSources, bearSources,
+    totalSources: sources.length,
+    query: newsResult.query, topic
+  };
+}
+
+// ============================================================
+// MOMENTUM
+// ============================================================
+function calcMomentum(history, currentPrice) {
+  if (!history || history.length < 2) return { m5m: 0, m1h: 0, m24h: 0, m7d: 0, trend: "flat", volatility: 0, accelerating: false };
+  const now = Math.floor(nowMs() / 1000);
+  const findPriceAt = (s) => {
+    const target = now - s;
+    let best = history[0], bestDiff = Math.abs(history[0].t - target);
+    for (const h of history) { const d = Math.abs(h.t - target); if (d < bestDiff) { bestDiff = d; best = h; } }
+    return best.p;
+  };
+  const m5m = currentPrice - findPriceAt(300), m1h = currentPrice - findPriceAt(3600),
+        m24h = currentPrice - findPriceAt(86400), m7d = currentPrice - findPriceAt(604800);
+  const prices = history.map(h => h.p);
+  const mean = prices.reduce((a,b)=>a+b,0)/prices.length;
+  const vol = Math.sqrt(prices.reduce((a,b)=>a+(b-mean)**2,0)/prices.length);
+  let trend = "flat";
+  if (m24h > 0.03 && m7d > 0) trend = "up_strong";
+  else if (m24h > 0.01) trend = "up";
+  else if (m24h < -0.03 && m7d < 0) trend = "down_strong";
+  else if (m24h < -0.01) trend = "down";
+  const accelerating = Math.abs(m1h) > Math.abs(m24h/24) * 3 && Math.sign(m1h) === Math.sign(m24h);
+  return { m5m, m1h, m24h, m7d, trend, volatility: vol, accelerating };
+}
+
+// ============================================================
+// COMBINED RECOMMENDATION
+// ============================================================
+function recommend(market, momentum, newsAnalysis, yesPrice, snapDelta) {
+  const noPrice = 1 - yesPrice;
+  let signal = 0;
+  const reasons = [];
+
+  // BERITA (bobot utama 0-4 poin)
+  if (newsAnalysis.sentiment === "bullish") {
+    const newsPoints = Math.round(newsAnalysis.confidence * 4);
+    signal += newsPoints;
+    reasons.push(`📰 Berita BULLISH dari ${newsAnalysis.bullSources}/${newsAnalysis.totalSources} sumber besar (${newsAnalysis.items.length} artikel)`);
+  } else if (newsAnalysis.sentiment === "bearish") {
+    const newsPoints = Math.round(newsAnalysis.confidence * 4);
+    signal -= newsPoints;
+    reasons.push(`📰 Berita BEARISH dari ${newsAnalysis.bearSources}/${newsAnalysis.totalSources} sumber besar (${newsAnalysis.items.length} artikel)`);
+  } else if (newsAnalysis.items.length > 0) {
+    reasons.push(`📰 Berita campuran (${newsAnalysis.bullCount}↑ / ${newsAnalysis.bearCount}↓ / ${newsAnalysis.neutralCount}=)`);
+  } else {
+    reasons.push("📰 Belum ada berita signifikan ditemukan");
+  }
+
+  // MOMENTUM HARGA (bobot pendukung)
+  if (momentum.trend === "up_strong") { signal += 2; reasons.push(`📈 Momentum harga naik kuat (24j: +${(momentum.m24h*100).toFixed(1)}%)`); }
+  else if (momentum.trend === "up") { signal += 1; reasons.push(`📈 Momentum mild naik (24j: +${(momentum.m24h*100).toFixed(1)}%)`); }
+  else if (momentum.trend === "down_strong") { signal -= 2; reasons.push(`📉 Momentum turun kuat (24j: ${(momentum.m24h*100).toFixed(1)}%)`); }
+  else if (momentum.trend === "down") { signal -= 1; reasons.push(`📉 Momentum mild turun (24j: ${(momentum.m24h*100).toFixed(1)}%)`); }
+
+  // AKSELERASI
+  if (momentum.accelerating && momentum.m1h > 0) { signal += 1; reasons.push("⚡ Harga berakselerasi naik (1j > rata-rata)"); }
+  else if (momentum.accelerating && momentum.m1h < 0) { signal -= 1; reasons.push("⚡ Harga berakselerasi turun"); }
+
+  // KONFIRMASI: berita & harga searah?
+  if (newsAnalysis.sentiment === "bullish" && momentum.m24h > 0) {
+    signal += 1; reasons.push("✅ Berita & harga KONFIRMASI naik");
+  } else if (newsAnalysis.sentiment === "bearish" && momentum.m24h < 0) {
+    signal += 1; signal = -Math.abs(signal); // tetap bearish
+    reasons.push("✅ Berita & harga KONFIRMASI turun");
+  } else if (newsAnalysis.sentiment === "bullish" && momentum.m24h < -0.02) {
+    reasons.push("⚠️ DIVERGENSI: berita bullish tapi harga turun — bisa opportunity atau false signal");
+  } else if (newsAnalysis.sentiment === "bearish" && momentum.m24h > 0.02) {
+    reasons.push("⚠️ DIVERGENSI: berita bearish tapi harga naik — hati-hati");
+  }
+
+  // Posisi harga
+  if (yesPrice > 0.92) reasons.push(`💰 Harga tinggi (${(yesPrice*100).toFixed(0)}¢) — upside terbatas`);
+  else if (yesPrice < 0.08) reasons.push(`💰 Harga rendah (${(yesPrice*100).toFixed(0)}¢) — peluang asimetris`);
+
+  // Putuskan aksi
+  let action, tag, confidence;
+  if (signal >= 4) { action = "buy-yes"; tag = "BELI YES"; confidence = "Tinggi"; }
+  else if (signal >= 2) { action = "buy-yes"; tag = "BELI YES"; confidence = "Sedang"; }
+  else if (signal <= -4) { action = "buy-no"; tag = "BELI NO"; confidence = "Tinggi"; }
+  else if (signal <= -2) { action = "buy-no"; tag = "BELI NO"; confidence = "Sedang"; }
+  else { action = "neutral"; tag = "TUNGGU"; confidence = "Rendah"; }
+
+  const entryPrice = action === "buy-yes" ? yesPrice : noPrice;
+  const targetMove = Math.min(Math.max(Math.abs(momentum.m24h) * 1.5, 0.05), 0.15);
+  const stopMove = Math.min(Math.max(momentum.volatility * 1.5, 0.03), 0.08);
+  const targetPrice = Math.min(entryPrice + targetMove, 0.98);
+  const stopPrice = Math.max(entryPrice - stopMove, 0.02);
+
+  let urgency = "wait";
+  const urgencyReasons = [];
+  if (action !== "neutral") {
+    const isExtreme = entryPrice > 0.85 || entryPrice < 0.15;
+    // NOW: konfidensi tinggi + ada katalis (akselerasi atau movement signifikan)
+    if (confidence === "Tinggi" && (momentum.accelerating || (snapDelta && Math.abs(snapDelta) > 0.02))) {
+      urgency = "now";
+      urgencyReasons.push("Konsensus berita kuat + momentum aktif");
+    }
+    // NOW: berita sangat kuat (recent, multi-source)
+    else if (newsAnalysis.confidence >= 0.7 && !isExtreme) {
+      urgency = "now";
+      urgencyReasons.push(`Konsensus ${Math.max(newsAnalysis.bullSources, newsAnalysis.bearSources)} sumber besar`);
+    }
+    // SOON: konfidensi tinggi tapi tidak ada katalis baru
+    else if (confidence === "Tinggi") {
+      urgency = "soon";
+      urgencyReasons.push("Sinyal kuat — tunggu konfirmasi pergerakan");
+    } else if (confidence === "Sedang" && momentum.accelerating) {
+      urgency = "soon";
+      urgencyReasons.push("Akselerasi terdeteksi");
+    }
+  }
+
+  return { action, tag, confidence, signal, reasons, yesPrice, noPrice, entryPrice, targetPrice, stopPrice, urgency, urgencyReasons };
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function momCell(label, val) {
+  const pct = (val * 100).toFixed(1);
+  const cls = val > 0.005 ? "up" : val < -0.005 ? "down" : "flat";
+  const sign = val > 0 ? "+" : "";
+  return `<div class="mom-cell ${cls}"><div class="l">${label}</div><div class="v">${sign}${pct}%</div></div>`;
+}
+function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+function formatNum(n) { if (n >= 1e6) return (n/1e6).toFixed(1)+"M"; if (n >= 1e3) return (n/1e3).toFixed(1)+"k"; return n.toFixed(0); }
+function formatCountdown(endDateStr) {
+  if (!endDateStr) return { text: "—", urgent: false };
+  const diff = new Date(endDateStr).getTime() - nowMs();
+  if (diff < 0) return { text: "Berakhir", urgent: true };
+  const d = Math.floor(diff/86400000), h = Math.floor((diff%86400000)/3600000), m = Math.floor((diff%3600000)/60000);
+  if (d > 0) return { text: `${d}h ${h}j`, urgent: d < 1 };
+  if (h > 0) return { text: `${h}j ${m}m`, urgent: h < 6 };
+  return { text: `${m}m`, urgent: true };
+}
+
+function renderNewsIntel(news) {
+  if (!news.items.length) {
+    return `<div class="news-intel empty">
+      <div class="news-header">
+        <span class="label">Intelijen Berita</span>
+        <span class="badge none">Tidak ada data</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted)">Belum ada berita yang ditemukan untuk topik ini. Bot tidak punya cukup info untuk konfidensi tinggi.</div>
+    </div>`;
+  }
+
+  const sentClass = news.sentiment === "bullish" ? "bullish" : news.sentiment === "bearish" ? "bearish" : "mixed";
+  const badgeClass = news.sentiment === "bullish" ? "bull" : news.sentiment === "bearish" ? "bear" : "mix";
+  const badgeText = news.sentiment === "bullish" ? `BULLISH ${Math.round(news.confidence*100)}%`
+                  : news.sentiment === "bearish" ? `BEARISH ${Math.round(news.confidence*100)}%`
+                  : "CAMPURAN";
+
+  const sourceChips = Object.entries(news.sourceBreakdown).map(([name, data]) => {
+    const cls = data.score > 0.5 ? "bull" : data.score < -0.5 ? "bear" : "";
+    return `<span class="source-chip ${cls}">${name} (${data.count})</span>`;
+  }).join("");
+
+  const topItems = news.items.slice(0, 6).map(item => {
+    const cls = item.score > 0.5 ? "bull" : item.score < -0.5 ? "bear" : "";
+    const timeHtml = item.timeStr ? `<span class="time">${escapeHtml(item.timeStr)}</span>` : "";
+    return `<div class="news-item">
+      <span class="src-tag ${cls}">${item.source}</span>
+      <a href="${item.url}" target="_blank" rel="noopener">${escapeHtml(item.title)}${timeHtml}</a>
+    </div>`;
+  }).join("");
+
+  return `<div class="news-intel ${sentClass}">
+    <div class="news-header">
+      <span class="label">📰 Intelijen Berita${news.topic ? ` · ${news.topic}` : ""}</span>
+      <span class="badge ${badgeClass}">${badgeText}</span>
+    </div>
+    <div class="news-stats">
+      <span><b>${news.items.length}</b> artikel</span>
+      <span><b>${news.totalSources}</b> sumber</span>
+      <span>${news.bullCount}↑ · ${news.bearCount}↓ · ${news.neutralCount}=</span>
+    </div>
+    <div class="sources-row">${sourceChips}</div>
+    <div class="news-list" id="nl-${news.marketId}">${topItems}</div>
+    ${news.items.length > 0 ? `<button class="news-toggle" data-toggle-news="${news.marketId}">▼ Tampilkan berita</button>` : ""}
+  </div>`;
+}
+
+function renderMarket(market, momentum, news, rec, snapDelta) {
+  const slug = market.slug || "";
+  const polyUrl = `https://polymarket.com/market/${slug}`;
+  const volume = parseFloat(market.volumeNum || market.volume || 0);
+  const liq = parseFloat(market.liquidityNum || market.liquidity || 0);
+  const cd = formatCountdown(market.endDate);
+  const bullBear = rec.action === "buy-yes" ? "bull" : rec.action === "buy-no" ? "bear" : "";
+  const isHot = rec.urgency === "now";
+  news.marketId = market.id;
+
+  const deltaHtml = snapDelta && Math.abs(snapDelta) > 0.005
+    ? `<span class="price-delta ${snapDelta > 0 ? "up" : "down"}">${snapDelta > 0 ? "+" : ""}${(snapDelta*100).toFixed(1)}%</span>` : "";
+
+  const urgencyTag = rec.urgency === "now" ? `<span class="execute-tag now">⚡ EKSEKUSI</span>`
+                   : rec.urgency === "soon" ? `<span class="execute-tag soon">⌛ TUNGGU KONFIRMASI</span>`
+                   : `<span class="execute-tag wait">Tidak ada urgensi</span>`;
+
+  const urgencyReasonsHtml = rec.urgencyReasons.length ? `<div style="margin-top:6px;font-size:11px;color:var(--muted)">→ ${rec.urgencyReasons.map(escapeHtml).join(" · ")}</div>` : "";
+
+  const entryExitHtml = rec.action !== "neutral" ? `
+    <div class="entry-exit">
+      <div><div class="l">Entry</div><div class="v entry">${(rec.entryPrice*100).toFixed(0)}¢</div></div>
+      <div><div class="l">Target</div><div class="v target">${(rec.targetPrice*100).toFixed(0)}¢</div></div>
+      <div><div class="l">Stop</div><div class="v stop">${(rec.stopPrice*100).toFixed(0)}¢</div></div>
+    </div>` : "";
+
+  // Signal bar visualization
+  const sigPct = Math.min(Math.abs(rec.signal) * 12.5, 100);
+  const sigColor = rec.signal > 0 ? "var(--yes)" : rec.signal < 0 ? "var(--no)" : "var(--muted)";
+
+  const isWatched = state.watchlist.has(market.id);
+
+  return `
+    <div class="market ${bullBear} ${isHot ? "hot" : ""}" data-market-id="${market.id}">
+      ${isHot ? `<div class="hot-badge">⚡ HOT</div>` : ""}
+      <div class="market-q">${escapeHtml(market.question)}</div>
+      <div class="meta">
+        <span>Vol: <b>$${formatNum(volume)}</b></span>
+        <span>Liq: <b>$${formatNum(liq)}</b></span>
+        <span class="countdown ${cd.urgent ? "urgent" : ""}">Tutup: <b>${cd.text}</b></span>
+      </div>
+      <div class="prices">
+        <div class="price-box yes">
+          <div class="label-sm">YES</div>
+          <div class="val">${(rec.yesPrice*100).toFixed(0)}¢</div>
+          ${rec.action === "buy-yes" ? deltaHtml : ""}
+        </div>
+        <div class="price-box no">
+          <div class="label-sm">NO</div>
+          <div class="val">${(rec.noPrice*100).toFixed(0)}¢</div>
+          ${rec.action === "buy-no" ? deltaHtml : ""}
+        </div>
+      </div>
+      <div class="momentum">
+        ${momCell("5m", momentum.m5m)}
+        ${momCell("1j", momentum.m1h)}
+        ${momCell("24j", momentum.m24h)}
+        ${momCell("7h", momentum.m7d)}
+      </div>
+      ${renderNewsIntel(news)}
+      <div class="recommendation ${rec.action}">
+        <div class="rec-row">
+          <span class="rec-tag ${rec.action}">${rec.tag}</span>
+          ${urgencyTag}
+        </div>
+        <div class="rec-summary">
+          Konfidensi: <b>${rec.confidence}</b> · Skor sinyal: <b>${rec.signal > 0 ? "+" : ""}${rec.signal}</b>
+          <div class="signal-bar"><div class="fill" style="width:${sigPct}%;background:${sigColor};margin-left:${rec.signal < 0 ? (100-sigPct) : 0}%"></div></div>
+          <ul>${rec.reasons.map(r => `<li>${escapeHtml(r)}</li>`).join("")}</ul>
+          ${urgencyReasonsHtml}
+        </div>
+        ${entryExitHtml}
+      </div>
+      <div class="market-actions">
+        <button class="watch ${isWatched ? "on" : ""}" data-watch="${market.id}">${isWatched ? "★ Watching" : "☆ Watch"}</button>
+        <a href="${polyUrl}" target="_blank" rel="noopener">Buka Polymarket ↗</a>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// NOTIFIKASI
+// ============================================================
+async function requestNotifPermission() {
+  if (!("Notification" in window)) { showToast("Browser tidak mendukung notifikasi"); return false; }
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") { showToast("Notifikasi diblokir"); return false; }
+  return (await Notification.requestPermission()) === "granted";
+}
+function sendNotification(title, body) {
+  if (!state.notifEnabled || Notification.permission !== "granted") return;
+  try {
+    const n = new Notification(title, {
+      body,
+      icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23d4ff3c' width='100' height='100' rx='20'/%3E%3Ctext x='50' y='65' text-anchor='middle' font-size='50' font-weight='bold' fill='%230a0a0f'%3E⚡%3C/text%3E%3C/svg%3E",
+      tag: "polyscan-alert", requireInteraction: false, silent: !state.soundEnabled
+    });
+    setTimeout(() => n.close(), 8000);
+  } catch (e) {}
+}
+function playBeep() {
+  if (!state.soundEnabled) return;
+  try {
+    if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const ctx = state.audioCtx;
+    [880, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator(); const gain = ctx.createGain();
+      osc.frequency.value = freq; osc.type = "sine"; gain.gain.value = 0;
+      osc.connect(gain).connect(ctx.destination);
+      const start = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(0.15, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.15);
+      osc.start(start); osc.stop(start + 0.16);
+    });
+  } catch (e) {}
+}
+function showToast(text, actionLabel, onAction) {
+  $("toastText").textContent = text;
+  const btn = $("toastAction");
+  if (actionLabel) { btn.style.display = "inline-block"; btn.textContent = actionLabel; btn.onclick = () => { onAction && onAction(); hideToast(); }; }
+  else { btn.style.display = "none"; }
+  $("toast").classList.add("visible");
+}
+function hideToast() { $("toast").classList.remove("visible"); }
+
+// ============================================================
+// MAIN SCAN
+// ============================================================
+async function runScan() {
+  $("emptyState").style.display = "none";
+  $("scanBtn").disabled = true;
+
+  const cfg = {
+    category: $("category").value, sortby: $("sortby").value,
+    limit: $("limit").value, keyword: $("keyword").value
+  };
+
+  try {
+    setStatus("📊 Memindai pasar Polymarket…", "working");
+    const markets = await fetchMarkets(cfg);
+    if (!markets.length) {
+      setStatus("Tidak ada pasar cocok.", "error");
+      $("emptyState").style.display = "block";
+      $("scanBtn").disabled = false;
+      return;
+    }
+
+    setStatus(`📊 ${markets.length} pasar — scanning berita multi-source…`, "working");
+
+    const html = [];
+    const newAlerts = [];
+
+    for (let i = 0; i < markets.length; i++) {
+      const m = markets[i];
+      const shortQ = m.question.slice(0, 30);
+
+      const tokenIds = parseStringList(m.clobTokenIds);
+      const outcomes = parseStringList(m.outcomes);
+      const prices = parseStringList(m.outcomePrices).map(p => parseFloat(p));
+      let yesPrice = 0.5, yesToken = null;
+      if (outcomes[0] && outcomes[0].toLowerCase() === "yes") { yesPrice = prices[0]; yesToken = tokenIds[0]; }
+      else if (outcomes[1] && outcomes[1].toLowerCase() === "yes") { yesPrice = prices[1]; yesToken = tokenIds[1]; }
+
+      const prev = state.marketSnapshots.get(m.id);
+      const snapDelta = prev ? (yesPrice - prev.yesPrice) : null;
+      state.marketSnapshots.set(m.id, { yesPrice, ts: nowMs() });
+
+      setStatus(`[${i+1}/${markets.length}] 📈 ${shortQ}… (harga)`, "working");
+      const historyPromise = yesToken ? fetchPriceHistory(yesToken) : Promise.resolve([]);
+
+      setStatus(`[${i+1}/${markets.length}] 📰 ${shortQ}… (berita)`, "working");
+      const newsPromise = fetchAllNews(m.question, (src, count) => {
+        // Optional progress feedback per source
+      });
+
+      const [history, newsResult] = await Promise.all([historyPromise, newsPromise]);
+      const newsAnalysis = analyzeNews(newsResult, m.question);
+      const momentum = calcMomentum(history, yesPrice);
+      const rec = recommend(m, momentum, newsAnalysis, yesPrice, snapDelta);
+
+      const alertKey = `${m.id}:${rec.action}:${rec.urgency}`;
+      if (rec.urgency === "now" && rec.action !== "neutral" && !state.alertedSignals.has(alertKey)) {
+        state.alertedSignals.add(alertKey);
+        newAlerts.push({ question: m.question, tag: rec.tag, entryPrice: rec.entryPrice, reason: rec.urgencyReasons[0] || "Sinyal kuat", confidence: rec.confidence });
+      }
+
+      html.push(renderMarket(m, momentum, newsAnalysis, rec, snapDelta));
+      $("results").innerHTML = html.join("");
+      rebindButtons();
+    }
+
+    if (newAlerts.length) {
+      $("alertList").innerHTML = newAlerts.map(a =>
+        `<li><b>${escapeHtml(a.tag)}</b> @ ${(a.entryPrice*100).toFixed(0)}¢ (${a.confidence}) — ${escapeHtml(a.question.slice(0,55))}${a.question.length>55?"…":""}</li>`
+      ).join("");
+      $("alertBanner").classList.add("visible");
+
+      if (newAlerts.length === 1) {
+        const a = newAlerts[0];
+        sendNotification(`⚡ ${a.tag} @ ${(a.entryPrice*100).toFixed(0)}¢ · ${a.confidence}`, `${a.question}\n${a.reason}`);
+      } else {
+        sendNotification(`⚡ ${newAlerts.length} sinyal eksekusi`, newAlerts.map(a => `${a.tag}: ${a.question.slice(0,40)}`).join("\n"));
+      }
+      playBeep();
+    } else {
+      $("alertBanner").classList.remove("visible");
+    }
+
+    state.lastScanTime = nowMs();
+    setStatus(`✓ Selesai · ${markets.length} pasar dianalisa · ${newAlerts.length} sinyal HOT`, "done");
+    rebindButtons();
+
+  } catch (e) {
+    console.error(e);
+    setStatus(`Error: ${e.message} · Tap Test Koneksi`, "error");
+  } finally {
+    $("scanBtn").disabled = false;
+    scheduleNextRefresh();
+  }
+}
+
+function setStatus(text, cls = "") { $("status").className = "status " + cls; $("statusText").textContent = text; }
+
+function scheduleNextRefresh() {
+  if (state.refreshTimer) { clearTimeout(state.refreshTimer); state.refreshTimer = null; }
+  if (state.countdownTimer) { clearInterval(state.countdownTimer); state.countdownTimer = null; }
+  const sec = parseInt($("refreshInterval").value);
+  if (!sec || sec === 0) { $("nextRefresh").textContent = ""; return; }
+  const nextAt = nowMs() + sec * 1000;
+  state.refreshTimer = setTimeout(() => runScan(), sec * 1000);
+  state.countdownTimer = setInterval(() => {
+    const remain = Math.max(0, Math.floor((nextAt - nowMs()) / 1000));
+    $("nextRefresh").textContent = `next ${pad(Math.floor(remain/60))}:${pad(remain%60)}`;
+  }, 1000);
+}
+
+// ============================================================
+// DIAGNOSTIC
+// ============================================================
+async function runDiagnostic() {
+  const out = $("diagOutput");
+  out.style.display = "block";
+  out.innerHTML = "";
+  const log = (msg, cls = "") => { out.innerHTML += cls ? `<span class="${cls}">${msg}</span>\n` : `${msg}\n`; out.scrollTop = out.scrollHeight; };
+
+  log(`Protocol: ${window.location.protocol}`, state.isLocalFile ? "warn" : "ok");
+  log(`Mode: ${state.isLocalFile ? "FILE LOKAL" : "WEB"}`);
+  log("");
+
+  for (let i = 0; i < PROXIES.length; i++) {
+    const p = PROXIES[i];
+    log(`[${i+1}] Test ${p.name}...`);
+    try {
+      const t0 = Date.now();
+      const r = await fetchWithTimeout(p.build(`${GAMMA}/markets?limit=1`), p.timeout);
+      const dt = Date.now() - t0;
+      const data = await r.json();
+      if (Array.isArray(data)) {
+        log(`  ✓ ${p.name} OK (${dt}ms)`, "ok");
+        if (!state.activeProxy) { state.activeProxy = p; state.proxyTested = true; updateConnBanner(); }
+      } else log(`  ? respons tidak valid`, "warn");
+    } catch (e) { log(`  ✗ ${e.message}`, "bad"); }
+  }
+
+  log("");
+  log("Test berita r.jina.ai...");
+  try {
+    const r = await fetchWithTimeout("https://r.jina.ai/https://news.google.com/rss/search?q=test", 8000);
+    log("  ✓ Berita reader OK", "ok");
+  } catch (e) { log(`  ✗ ${e.message}`, "bad"); }
+
+  log("");
+  if (state.activeProxy) log(`SIAP: pakai ${state.activeProxy.name}`, "ok");
+}
+
+// ============================================================
+// BUTTONS
+// ============================================================
+function rebindButtons() {
+  document.querySelectorAll("[data-watch]").forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.getAttribute("data-watch");
+      if (state.watchlist.has(id)) { state.watchlist.delete(id); btn.classList.remove("on"); btn.textContent = "☆ Watch"; }
+      else { state.watchlist.add(id); btn.classList.add("on"); btn.textContent = "★ Watching"; }
+      localStorage.setItem("polyscan_watch", JSON.stringify(Array.from(state.watchlist)));
+    };
+  });
+  document.querySelectorAll("[data-toggle-news]").forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.getAttribute("data-toggle-news");
+      const list = $(`nl-${id}`);
+      if (list) {
+        list.classList.toggle("expanded");
+        btn.textContent = list.classList.contains("expanded") ? "▲ Tutup berita" : "▼ Tampilkan berita";
+      }
+    };
+  });
+}
+
+// ============================================================
+// EVENTS
+// ============================================================
+$("notifToggle").onclick = async () => {
+  if (!state.notifEnabled) {
+    const ok = await requestNotifPermission();
+    if (ok) { state.notifEnabled = true; $("notifToggle").classList.add("on"); $("notifState").textContent = "ON"; sendNotification("PolyScan aktif", "Notif sinyal eksekusi akan dikirim"); }
+  } else { state.notifEnabled = false; $("notifToggle").classList.remove("on"); $("notifState").textContent = "OFF"; }
+};
+
+$("soundToggle").onclick = () => {
+  state.soundEnabled = !state.soundEnabled;
+  localStorage.setItem("polyscan_sound", state.soundEnabled);
+  $("soundToggle").classList.toggle("on", state.soundEnabled);
+  $("soundState").textContent = state.soundEnabled ? "ON" : "OFF";
+  if (state.soundEnabled) {
+    if (!state.audioCtx) state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (state.audioCtx.state === "suspended") state.audioCtx.resume();
+    playBeep();
+  }
+};
+
+$("scanBtn").onclick = runScan;
+$("diagBtn").onclick = runDiagnostic;
+$("resetProxyBtn").onclick = () => {
+  state.activeProxy = null; state.proxyTested = false;
+  $("connBanner").className = "conn-banner";
+  $("connBanner").querySelector(".ico").textContent = "⏳";
+  $("connDetail").innerHTML = "Reset...";
+  autoSelectProxy();
+};
+$("refreshInterval").onchange = () => { if (state.lastScanTime) scheduleNextRefresh(); };
+$("toastClose").onclick = hideToast;
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+  detectLocalMode();
+  $("soundToggle").classList.toggle("on", state.soundEnabled);
+  $("soundState").textContent = state.soundEnabled ? "ON" : "OFF";
+  if (Notification.permission === "granted") { state.notifEnabled = true; $("notifToggle").classList.add("on"); $("notifState").textContent = "ON"; }
+  tickClock(); setInterval(tickClock, 1000);
+  await autoSelectProxy();
+  if (state.proxyTested) await syncServerTime();
+  setInterval(() => { if (state.proxyTested) syncServerTime(); }, 5 * 60 * 1000);
+  setTimeout(() => {
+    if (Notification.permission === "default") {
+      showToast("Aktifkan notifikasi untuk alert eksekusi?", "Aktifkan", async () => {
+        const ok = await requestNotifPermission();
+        if (ok) { state.notifEnabled = true; $("notifToggle").classList.add("on"); $("notifState").textContent = "ON"; }
+      });
+    }
+  }, 2000);
+}
+
+init();
+</script>
+</body>
+</html>
